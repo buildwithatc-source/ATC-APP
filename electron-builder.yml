@@ -1,0 +1,55 @@
+appId: com.buildwithatc.invoicer
+productName: ATC Invoicer
+copyright: Copyright © 2026 Build With ATC
+
+directories:
+  buildResources: build
+  output: release/${version}
+
+# Only ship the compiled output + package manifest.
+files:
+  - '!**/.vscode/*'
+  - '!src/*'
+  - '!electron.vite.config.{js,ts,mjs,cjs}'
+  - '!electron-builder.yml'
+  - '!{.env,.env.*,.npmrc,pnpm-lock.yaml,package-lock.json}'
+  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json,tailwind.config.js,postcss.config.js}'
+  - '!{.eslintignore,.eslintrc.cjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,README.md}'
+
+asarUnpack:
+  - resources/**
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  # icon: build/icon.ico   # add a 256x256 .ico here to brand the app
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  deleteAppDataOnUninstall: false
+
+mac:
+  target:
+    - target: dmg
+      arch:
+        - arm64
+        - x64
+    - target: zip
+      arch:
+        - arm64
+        - x64
+  category: public.app-category.business
+  # icon: build/icon.icns
+
+dmg:
+  artifactName: ${name}-${version}-${arch}.${ext}
+
+# Auto-update source (GitHub Releases).
+publish:
+  provider: github
+  owner: buildwithatc-source
+  repo: ATC-APP
