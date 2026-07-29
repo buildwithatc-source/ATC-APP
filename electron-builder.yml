@@ -24,13 +24,16 @@ win:
     - target: nsis
       arch:
         - x64
-  # icon: build/icon.ico   # add a 256x256 .ico here to brand the app
+  icon: build/icon.png # electron-builder converts to .ico for app + installer
 
 nsis:
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
   deleteAppDataOnUninstall: false
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: ATC Invoicer
 
 mac:
   target:
@@ -43,7 +46,7 @@ mac:
         - arm64
         - x64
   category: public.app-category.business
-  # icon: build/icon.icns
+  icon: build/icon.png # electron-builder converts to .icns
 
 dmg:
   artifactName: ${name}-${version}-${arch}.${ext}
