@@ -66,14 +66,24 @@ The schema, security policies, triggers, seed data, and invoice-numbering functi
 single migration. Apply it before using the app:
 
 1. Supabase dashboard → **SQL Editor → New query**.
-2. Paste the entire contents of [`supabase/migrations/001_init.sql`](supabase/migrations/001_init.sql).
-3. **Run**. It is idempotent — safe to re-run; seeds insert only if missing.
+2. Run each migration in order (paste the whole file, **Run**, repeat):
+   - [`supabase/migrations/001_init.sql`](supabase/migrations/001_init.sql) — core schema, RLS, seeds, invoice numbering.
+   - [`supabase/migrations/002_projects_expenses.sql`](supabase/migrations/002_projects_expenses.sql) — projects + expenses, and the invoice→project link.
+3. Both are idempotent — safe to re-run; seeds insert only if missing.
 
 This creates `profiles`, `business`, `clients`, `invoices`, `invoice_items`; enables **RLS**
 (authenticated users can read/write); adds an `updated_at` trigger, a trigger that auto-creates
 a `profiles` row for each auth user (with a backfill for existing users), and the
 `next_invoice_no()` function that issues `YYYYMMDD-N` numbers safely. It also seeds the business
 record and the 9 clients.
+
+## Projects & expenses
+
+**Projects** (tied to a client) let you log **expenses** (description, amount, date) as work
+happens. When invoicing, choose **Bill from project** in the editor to see that project's
+**unbilled** expenses, tick the ones to bill, and they drop in as line items — then get marked
+**billed** on save so they won't reappear. Each project's detail page shows totals
+(total / billed / unbilled) and lets you toggle an expense's billed state manually.
 
 ## Authentication
 

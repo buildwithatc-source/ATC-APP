@@ -4,12 +4,22 @@ import { useFieldArray, useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Button, TextArea, TextField } from '@renderer/components/ui'
 import { FullscreenSpinner } from '@renderer/components/FullscreenSpinner'
-import type { Business, Client, InvoiceInput, InvoiceStatus } from '@renderer/lib/types'
+import type {
+  Business,
+  Client,
+  Expense,
+  InvoiceInput,
+  InvoiceStatus,
+  ProjectWithClient
+} from '@renderer/lib/types'
 import { listClients } from '@renderer/lib/db/clients'
 import { getBusiness } from '@renderer/lib/db/business'
+import { listProjects } from '@renderer/lib/db/projects'
+import { setExpensesInvoiced } from '@renderer/lib/db/expenses'
 import { createInvoice, getInvoice, updateInvoice } from '@renderer/lib/db/invoices'
 import { toNumber } from '@renderer/lib/format'
 import { ClientPicker } from './ClientPicker'
+import { ExpensePicker } from './ExpensePicker'
 import { LineItemsEditor } from './LineItemsEditor'
 import { InvoiceSheet, type SheetData } from './InvoiceSheet'
 import { invoicePdfName, renderInvoiceHtml } from './invoiceHtml'
@@ -30,7 +40,10 @@ export function InvoiceEditor(): JSX.Element {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [clients, setClients] = useState<Client[]>([])
+  const [projects, setProjects] = useState<ProjectWithClient[]>([])
   const [business, setBusiness] = useState<Business | null>(null)
+  // Expense ids pulled onto this invoice; marked billed on save.
+  const [pendingExpenseIds, setPendingExpenseIds] = useState<string[]>([])
   const [invoiceNo, setInvoiceNo] = useState('')
   const [status, setStatus] = useState<InvoiceStatus>('draft')
   const [saving, setSaving] = useState<InvoiceStatus | null>(null)
@@ -63,10 +76,11 @@ export function InvoiceEditor(): JSX.Element {
       setLoading(true)
       setLoadError(null)
       try {
-        const [cl, biz] = await Promise.all([listClients(), getBusiness()])
+        const [cl, biz, pr] = await Promise.all([listClients(), getBusiness(), listProjects()])
         if (!active) return
         setClients(cl)
         setBusiness(biz)
+        setProjects(pr)
 
         if (id) {
           const inv = await getInvoice(id)
@@ -116,6 +130,7 @@ export function InvoiceEditor(): JSX.Element {
     const { subtotal, total } = computeTotals(v.items, v.adjustments)
     return {
       client_id: v.client_id || null,
+      project_id: v.project_id || null,
       payable_to: v.payable_to,
       project: v.project,
       invoice_date: v.invoice_date,
@@ -133,6 +148,31 @@ export function InvoiceEditor(): JSX.Element {
     }
   }
 
+  /** After the invoice is saved, mark the pulled-in expenses as billed. */
+  async function markPendingExpensesBilled(invoiceId: string): Promise<void> {
+    if (pendingExpenseIds.length === 0) return
+    await setExpensesInvoiced(pendingExpenseIds, true, invoiceId)
+    setPendingExpenseIds([])
+  }
+
+  /** Pull selected project expenses onto the invoice as line items. */
+  function addExpenses(expenses: Expense[]): void {
+    for (const e of expenses) {
+      append({ description: e.description ?? '', qty: 1, unit_price: Number(e.amount) })
+    }
+    setPendingExpenseIds((prev) => [...prev, ...expenses.map((e) => e.id)])
+  }
+
+  /** Selecting a project links it, fills the project name, and sets the client. */
+  function onSelectProject(projectId: string): void {
+    setValue('project_id', projectId)
+    const proj = projects.find((p) => p.id === projectId)
+    if (proj) {
+      setValue('project', proj.name)
+      if (proj.client_id) setValue('client_id', proj.client_id, { shouldValidate: true })
+    }
+  }
+
   function save(nextStatus: InvoiceStatus): void {
     setSaveError(null)
     void handleSubmit(async (v) => {
@@ -141,11 +181,13 @@ export function InvoiceEditor(): JSX.Element {
         const input = buildInput(v, nextStatus)
         if (isEdit && id) {
           const updated = await updateInvoice(id, input)
+          await markPendingExpensesBilled(updated.id)
           setStatus(updated.status)
           setInvoiceNo(updated.invoice_no)
           setSavedAt(Date.now())
         } else {
           const created = await createInvoice(input)
+          await markPendingExpensesBilled(created.id)
           navigate(`/invoices/${created.id}/edit`, { replace: true })
         }
       } catch (e) {
@@ -240,9 +282,33 @@ export function InvoiceEditor(): JSX.Element {
             error={errors.client_id?.message}
           />
 
+          {/* Bill from project — links the invoice and enables expense pull-in */}
+          <div>
+            <span className="mb-1 block text-sm font-medium text-slate-700">
+              Bill from project <span className="font-normal text-slate-400">(optional)</span>
+            </span>
+            <select
+              value={values.project_id || ''}
+              onChange={(e) => onSelectProject(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-accent focus:ring-2 focus:ring-brand-accent/30"
+            >
+              <option value="">— None —</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                  {p.clients?.name ? ` · ${p.clients.name}` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {values.project_id && (
+            <ExpensePicker projectId={values.project_id} onAdd={addExpenses} />
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <TextField label="Payable to" {...register('payable_to')} />
-            <TextField label="Project" {...register('project')} />
+            <TextField label="Project (label)" {...register('project')} />
           </div>
 
           <div className="grid grid-cols-2 gap-4">

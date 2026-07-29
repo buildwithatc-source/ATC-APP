@@ -11,6 +11,7 @@ import type {
 function invoiceRow(input: InvoiceInput): Record<string, unknown> {
   return {
     client_id: input.client_id,
+    project_id: input.project_id,
     payable_to: emptyToNull(input.payable_to),
     project: emptyToNull(input.project),
     invoice_date: input.invoice_date,

@@ -11,6 +11,7 @@ export const itemSchema = z.object({
 
 export const invoiceSchema = z.object({
   client_id: z.string().min(1, 'Select a client'),
+  project_id: z.string(),
   payable_to: z.string(),
   project: z.string(),
   invoice_date: z.string().min(1, 'Invoice date is required'),
@@ -35,6 +36,7 @@ export function computeTotals(
 export function newInvoiceDefaults(payableToDefault: string): InvoiceFormValues {
   return {
     client_id: '',
+    project_id: '',
     payable_to: payableToDefault,
     project: '',
     invoice_date: todayManila(),
@@ -49,6 +51,7 @@ export function newInvoiceDefaults(payableToDefault: string): InvoiceFormValues 
 export function invoiceToFormValues(inv: InvoiceWithItems): InvoiceFormValues {
   return {
     client_id: inv.client_id ?? '',
+    project_id: inv.project_id ?? '',
     payable_to: inv.payable_to ?? '',
     project: inv.project ?? '',
     invoice_date: inv.invoice_date,

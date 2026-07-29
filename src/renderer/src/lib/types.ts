@@ -15,12 +15,50 @@ export type ClientInput = {
   contact_number: string | null
 }
 
+export type ProjectStatus = 'active' | 'archived'
+
+export type Project = {
+  id: string
+  name: string
+  client_id: string | null
+  description: string | null
+  status: ProjectStatus
+  created_at: string
+}
+
+export type ProjectWithClient = Project & { clients: { name: string } | null }
+
+export type ProjectInput = {
+  name: string
+  client_id: string | null
+  description: string | null
+  status: ProjectStatus
+}
+
+export type Expense = {
+  id: string
+  project_id: string
+  description: string | null
+  amount: number
+  expense_date: string
+  invoiced: boolean
+  invoice_id: string | null
+  created_at: string
+}
+
+export type ExpenseInput = {
+  description: string
+  amount: number
+  expense_date: string
+}
+
 export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'void'
 
 export type Invoice = {
   id: string
   invoice_no: string
   client_id: string | null
+  project_id: string | null
   payable_to: string | null
   project: string | null
   invoice_date: string
@@ -55,6 +93,7 @@ export type InvoiceItemInput = {
 /** Everything the editor persists for an invoice. */
 export type InvoiceInput = {
   client_id: string | null
+  project_id: string | null
   payable_to: string | null
   project: string | null
   invoice_date: string

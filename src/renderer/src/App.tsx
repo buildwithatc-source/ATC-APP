@@ -6,6 +6,8 @@ import { FullscreenSpinner } from './components/FullscreenSpinner'
 import { Login } from './pages/Login'
 import { Dashboard } from './pages/dashboard/Dashboard'
 import { Clients } from './pages/clients/Clients'
+import { Projects } from './pages/projects/Projects'
+import { ProjectDetail } from './pages/projects/ProjectDetail'
 import { InvoiceEditor } from './pages/invoices/InvoiceEditor'
 import { Settings } from './pages/settings/Settings'
 
@@ -30,6 +32,8 @@ function AppRoutes(): JSX.Element {
       >
         <Route path="/" element={<Dashboard />} />
         <Route path="/clients" element={<Clients />} />
+        <Route path="/projects" element={<Projects />} />
+        <Route path="/projects/:id" element={<ProjectDetail />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/invoices/new" element={<InvoiceEditor />} />
         <Route path="/invoices/:id/edit" element={<InvoiceEditor />} />
