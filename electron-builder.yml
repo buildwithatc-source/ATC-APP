@@ -49,7 +49,9 @@ dmg:
   artifactName: ${name}-${version}-${arch}.${ext}
 
 # Auto-update source (GitHub Releases).
+# releaseType: release -> tagged builds publish immediately (no manual draft step).
 publish:
   provider: github
   owner: buildwithatc-source
   repo: ATC-APP
+  releaseType: release
