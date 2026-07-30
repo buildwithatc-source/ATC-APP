@@ -71,7 +71,8 @@ single migration. Apply it before using the app:
    - [`supabase/migrations/002_projects_expenses.sql`](supabase/migrations/002_projects_expenses.sql) — projects + expenses, and the invoice→project link.
    - [`supabase/migrations/003_expense_markup.sql`](supabase/migrations/003_expense_markup.sql) — per-expense markup %.
    - [`supabase/migrations/004_project_codes_budgets.sql`](supabase/migrations/004_project_codes_budgets.sql) — project codes, contract budget, sub-budget categories.
-   - [`supabase/migrations/005_contract_and_invoice_markup.sql`](supabase/migrations/005_contract_and_invoice_markup.sql) — contract-budget (quotation) scope items + invoice markup.
+   - [`supabase/migrations/005_contract_and_invoice_markup.sql`](supabase/migrations/005_contract_and_invoice_markup.sql) — contract-budget scope items + invoice markup.
+   - [`supabase/migrations/006_quotations.sql`](supabase/migrations/006_quotations.sql) — standalone quotations (QTN codes) that push to projects.
 3. All are idempotent — safe to re-run; seeds insert only if missing.
 
 This creates `profiles`, `business`, `clients`, `invoices`, `invoice_items`; enables **RLS**
@@ -79,6 +80,15 @@ This creates `profiles`, `business`, `clients`, `invoices`, `invoice_items`; ena
 a `profiles` row for each auth user (with a backfill for existing users), and the
 `next_invoice_no()` function that issues `YYYYMMDD-N` numbers safely. It also seeds the business
 record and the 9 clients.
+
+## Quotations → projects
+
+A **Quotation** (own page, numbered **`QTN<YEAR><NNN>`**) is where you price a job for a client:
+scope items with **Quoted → Negotiated** prices. When you **Push to project**, it creates a
+**project** (with its `ATC<YEAR><NNN>` code), copies the scope items into the project's contract
+budget, sets the contract sum, seeds the My-budget categories, and drops off the quotation list.
+Un-pushed quotations stay on the Quotation page and never consume an ATC project number. You can
+also still create a project directly.
 
 ## Projects & expenses
 

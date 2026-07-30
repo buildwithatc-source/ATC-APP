@@ -90,6 +90,41 @@ export type ContractItemInput = {
   negotiated_amount: number
 }
 
+/** A scope-item shape shared by contract_items and quotation_items forms. */
+export type ScopeItemLike = {
+  description: string | null
+  quoted_amount: number
+  negotiated_amount: number
+}
+
+export type Quotation = {
+  id: string
+  code: string
+  year: number | null
+  quotation_no: number | null
+  client_id: string | null
+  title: string | null
+  project_id: string | null
+  created_at: string
+}
+
+export type QuotationWithClient = Quotation & { clients: { name: string } | null }
+
+export type QuotationInput = {
+  client_id: string | null
+  title: string | null
+}
+
+export type QuotationItem = {
+  id: string
+  quotation_id: string
+  description: string | null
+  quoted_amount: number
+  negotiated_amount: number
+  position: number
+  created_at: string
+}
+
 export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'void'
 
 export type Invoice = {

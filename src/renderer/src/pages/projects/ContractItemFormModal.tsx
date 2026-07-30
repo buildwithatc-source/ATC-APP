@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { Modal } from '@renderer/components/Modal'
 import { Button, TextField } from '@renderer/components/ui'
 import { toNumber } from '@renderer/lib/format'
-import type { ContractItem, ContractItemInput } from '@renderer/lib/types'
+import type { ContractItemInput, ScopeItemLike } from '@renderer/lib/types'
 
 const schema = z.object({
   description: z.string().min(1, 'Description is required'),
@@ -16,7 +16,7 @@ type FormValues = z.infer<typeof schema>
 
 type Props = {
   open: boolean
-  item: ContractItem | null
+  item: ScopeItemLike | null
   onClose: () => void
   onSubmit: (input: ContractItemInput) => Promise<void>
 }

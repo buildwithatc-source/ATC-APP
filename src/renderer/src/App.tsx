@@ -8,6 +8,8 @@ import { Dashboard } from './pages/dashboard/Dashboard'
 import { Clients } from './pages/clients/Clients'
 import { Projects } from './pages/projects/Projects'
 import { ProjectDetail } from './pages/projects/ProjectDetail'
+import { Quotations } from './pages/quotations/Quotations'
+import { QuotationDetail } from './pages/quotations/QuotationDetail'
 import { InvoiceEditor } from './pages/invoices/InvoiceEditor'
 import { Settings } from './pages/settings/Settings'
 
@@ -32,6 +34,8 @@ function AppRoutes(): JSX.Element {
       >
         <Route path="/" element={<Dashboard />} />
         <Route path="/clients" element={<Clients />} />
+        <Route path="/quotations" element={<Quotations />} />
+        <Route path="/quotations/:id" element={<QuotationDetail />} />
         <Route path="/projects" element={<Projects />} />
         <Route path="/projects/:id" element={<ProjectDetail />} />
         <Route path="/settings" element={<Settings />} />
