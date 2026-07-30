@@ -34,7 +34,7 @@ export function Projects(): JSX.Element {
     const q = search.trim().toLowerCase()
     if (!q) return projects
     return projects.filter((p) =>
-      `${p.name} ${p.clients?.name ?? ''}`.toLowerCase().includes(q)
+      `${p.code} ${p.name ?? ''} ${p.clients?.name ?? ''}`.toLowerCase().includes(q)
     )
   }, [projects, search])
 
@@ -74,7 +74,8 @@ export function Projects(): JSX.Element {
           <table className="w-full text-left text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
               <tr>
-                <th className="px-4 py-3 font-medium">Project</th>
+                <th className="px-4 py-3 font-medium">Code</th>
+                <th className="px-4 py-3 font-medium">Description</th>
                 <th className="px-4 py-3 font-medium">Client</th>
                 <th className="px-4 py-3 font-medium">Status</th>
               </tr>
@@ -86,7 +87,8 @@ export function Projects(): JSX.Element {
                   onClick={() => navigate(`/projects/${p.id}`)}
                   className="cursor-pointer hover:bg-slate-50"
                 >
-                  <td className="px-4 py-3 font-medium text-slate-900">{p.name}</td>
+                  <td className="px-4 py-3 font-mono font-medium text-slate-900">{p.code}</td>
+                  <td className="px-4 py-3 text-slate-700">{p.name || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{p.clients?.name ?? '—'}</td>
                   <td className="px-4 py-3">
                     <span
@@ -103,7 +105,7 @@ export function Projects(): JSX.Element {
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={3} className="px-4 py-10 text-center text-slate-400">
+                  <td colSpan={4} className="px-4 py-10 text-center text-slate-400">
                     {search ? 'No projects match your search.' : 'No projects yet.'}
                   </td>
                 </tr>

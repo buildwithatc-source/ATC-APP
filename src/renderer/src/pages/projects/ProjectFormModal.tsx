@@ -3,13 +3,12 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Modal } from '@renderer/components/Modal'
-import { Button, TextArea, TextField } from '@renderer/components/ui'
+import { Button, TextField } from '@renderer/components/ui'
 import type { Client, Project, ProjectInput } from '@renderer/lib/types'
 
 const schema = z.object({
-  name: z.string().min(1, 'Project name is required'),
+  name: z.string(),
   client_id: z.string().min(1, 'Select a client'),
-  description: z.string(),
   status: z.enum(['active', 'archived'])
 })
 type FormValues = z.infer<typeof schema>
@@ -39,7 +38,7 @@ export function ProjectFormModal({
     formState: { errors, isSubmitting }
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { name: '', client_id: '', description: '', status: 'active' }
+    defaultValues: { name: '', client_id: '', status: 'active' }
   })
 
   useEffect(() => {
@@ -47,25 +46,19 @@ export function ProjectFormModal({
       reset({
         name: project?.name ?? '',
         client_id: project?.client_id ?? '',
-        description: project?.description ?? '',
         status: project?.status ?? 'active'
       })
     }
   }, [open, project, reset])
 
   const submit = handleSubmit(async (v) =>
-    onSubmit({
-      name: v.name,
-      client_id: v.client_id,
-      description: v.description,
-      status: v.status
-    })
+    onSubmit({ name: v.name, client_id: v.client_id, status: v.status })
   )
 
   return (
     <Modal
       open={open}
-      title={project ? 'Edit project' : 'New project'}
+      title={project ? `Edit ${project.code}` : 'New project'}
       onClose={onClose}
       footer={
         <>
@@ -85,7 +78,19 @@ export function ProjectFormModal({
         }}
         className="space-y-4"
       >
-        <TextField label="Project name" autoFocus error={errors.name?.message} {...register('name')} />
+        {!project && (
+          <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-500 ring-1 ring-slate-200">
+            A project code (e.g. <span className="font-mono">ATC{new Date().getFullYear()}001</span>)
+            is assigned automatically.
+          </p>
+        )}
+
+        <TextField
+          label="Description"
+          autoFocus
+          placeholder="e.g. Kitchen fit-out"
+          {...register('name')}
+        />
 
         <label className="block">
           <span className="mb-1 block text-sm font-medium text-slate-700">Client</span>
@@ -101,8 +106,6 @@ export function ProjectFormModal({
             <span className="mt-1 block text-xs text-red-600">{errors.client_id.message}</span>
           )}
         </label>
-
-        <TextArea label="Description" rows={2} {...register('description')} />
 
         <label className="block">
           <span className="mb-1 block text-sm font-medium text-slate-700">Status</span>

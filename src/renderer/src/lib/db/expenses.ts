@@ -29,6 +29,7 @@ export async function createExpense(projectId: string, input: ExpenseInput): Pro
     .from('expenses')
     .insert({
       project_id: projectId,
+      category_id: input.category_id || null,
       description: input.description.trim() || null,
       amount: input.amount,
       markup_percent: input.markup_percent,
@@ -44,6 +45,7 @@ export async function updateExpense(id: string, input: ExpenseInput): Promise<Ex
   const { data, error } = await supabase
     .from('expenses')
     .update({
+      category_id: input.category_id || null,
       description: input.description.trim() || null,
       amount: input.amount,
       markup_percent: input.markup_percent,

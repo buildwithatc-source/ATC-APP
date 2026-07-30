@@ -168,12 +168,13 @@ export function InvoiceEditor(): JSX.Element {
     setPendingExpenseIds((prev) => [...prev, ...expenses.map((e) => e.id)])
   }
 
-  /** Selecting a project links it, fills the project name, and sets the client. */
+  /** Selecting a project links it, fills the project label (description, not the
+   *  code — invoices don't show the code), and sets the client. */
   function onSelectProject(projectId: string): void {
     setValue('project_id', projectId)
     const proj = projects.find((p) => p.id === projectId)
     if (proj) {
-      setValue('project', proj.name)
+      setValue('project', proj.name ?? '')
       if (proj.client_id) setValue('client_id', proj.client_id, { shouldValidate: true })
     }
   }
@@ -300,8 +301,8 @@ export function InvoiceEditor(): JSX.Element {
               <option value="">— None —</option>
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.name}
-                  {p.clients?.name ? ` · ${p.clients.name}` : ''}
+                  {p.code}
+                  {p.name ? ` · ${p.name}` : ''}
                 </option>
               ))}
             </select>

@@ -70,6 +70,7 @@ single migration. Apply it before using the app:
    - [`supabase/migrations/001_init.sql`](supabase/migrations/001_init.sql) — core schema, RLS, seeds, invoice numbering.
    - [`supabase/migrations/002_projects_expenses.sql`](supabase/migrations/002_projects_expenses.sql) — projects + expenses, and the invoice→project link.
    - [`supabase/migrations/003_expense_markup.sql`](supabase/migrations/003_expense_markup.sql) — per-expense markup %.
+   - [`supabase/migrations/004_project_codes_budgets.sql`](supabase/migrations/004_project_codes_budgets.sql) — project codes, contract budget, sub-budget categories.
 3. All are idempotent — safe to re-run; seeds insert only if missing.
 
 This creates `profiles`, `business`, `clients`, `invoices`, `invoice_items`; enables **RLS**
@@ -80,12 +81,19 @@ record and the 9 clients.
 
 ## Projects & expenses
 
-**Projects** (tied to a client) let you log **expenses** (description, cost, **markup %**, date)
-as work happens. The **billable** amount = cost × (1 + markup%). When invoicing, choose
-**Bill from project** in the editor to see that project's **unbilled** expenses, tick the ones
-to bill, and they drop in as line items priced at the **billable** amount — then get marked
-**billed** on save so they won't reappear. Each project's detail page shows totals
-(total billable / billed / unbilled) and lets you toggle an expense's billed state manually.
+Each **project** gets an auto code **`ATC<YEAR><NNN>`** (e.g. `ATC2026001`) plus a description.
+Numbers are **gap-filled** per year — delete a test/quote project and its number is freed for
+the next one. Invoices reference the project's **description** (never the code).
+
+A project's detail page has two tabs:
+
+- **Expenses** — log **expenses** (description, budget category, cost, **markup %**, date) as work
+  happens. Billable = cost × (1 + markup%). When invoicing, **Bill from project** lists the
+  project's **unbilled** expenses; tick some and they drop in as line items priced at the
+  **billable** amount, then get marked **billed** on save so they won't reappear.
+- **Budget** — set a **contract budget** and **sub-budget categories** (Labor, Painting, Roofing…).
+  Each category shows a completion bar of **actual cost spent** (from expenses assigned to it) vs
+  its budget — **green** under, **amber** near, **red** over.
 
 ## Authentication
 

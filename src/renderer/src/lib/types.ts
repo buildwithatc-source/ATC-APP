@@ -19,25 +19,44 @@ export type ProjectStatus = 'active' | 'archived'
 
 export type Project = {
   id: string
-  name: string
+  code: string
+  year: number | null
+  project_no: number | null
+  /** Human description/label (shown next to the code; used on invoices). */
+  name: string | null
   client_id: string | null
   description: string | null
   status: ProjectStatus
+  contract_budget: number
   created_at: string
 }
 
 export type ProjectWithClient = Project & { clients: { name: string } | null }
 
 export type ProjectInput = {
-  name: string
+  name: string | null
   client_id: string | null
-  description: string | null
   status: ProjectStatus
+}
+
+export type BudgetCategory = {
+  id: string
+  project_id: string
+  name: string
+  budget_amount: number
+  position: number
+  created_at: string
+}
+
+export type BudgetCategoryInput = {
+  name: string
+  budget_amount: number
 }
 
 export type Expense = {
   id: string
   project_id: string
+  category_id: string | null
   description: string | null
   amount: number
   markup_percent: number
@@ -48,6 +67,7 @@ export type Expense = {
 }
 
 export type ExpenseInput = {
+  category_id: string | null
   description: string
   amount: number
   markup_percent: number
