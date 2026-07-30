@@ -17,7 +17,7 @@ import { getBusiness } from '@renderer/lib/db/business'
 import { listProjects } from '@renderer/lib/db/projects'
 import { setExpensesInvoiced } from '@renderer/lib/db/expenses'
 import { createInvoice, getInvoice, updateInvoice } from '@renderer/lib/db/invoices'
-import { toNumber } from '@renderer/lib/format'
+import { toNumber, withMarkup } from '@renderer/lib/format'
 import { ClientPicker } from './ClientPicker'
 import { ExpensePicker } from './ExpensePicker'
 import { LineItemsEditor } from './LineItemsEditor'
@@ -155,10 +155,15 @@ export function InvoiceEditor(): JSX.Element {
     setPendingExpenseIds([])
   }
 
-  /** Pull selected project expenses onto the invoice as line items. */
+  /** Pull selected project expenses onto the invoice as line items, priced at
+   *  the billable (cost + markup) amount the client sees. */
   function addExpenses(expenses: Expense[]): void {
     for (const e of expenses) {
-      append({ description: e.description ?? '', qty: 1, unit_price: Number(e.amount) })
+      append({
+        description: e.description ?? '',
+        qty: 1,
+        unit_price: withMarkup(Number(e.amount), Number(e.markup_percent))
+      })
     }
     setPendingExpenseIds((prev) => [...prev, ...expenses.map((e) => e.id)])
   }

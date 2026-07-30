@@ -11,7 +11,7 @@ import {
   setExpensesInvoiced,
   updateExpense
 } from '@renderer/lib/db/expenses'
-import { formatPeso, formatTemplateDate } from '@renderer/lib/format'
+import { formatPeso, formatTemplateDate, withMarkup } from '@renderer/lib/format'
 import type { Expense, ExpenseInput, ProjectWithClient } from '@renderer/lib/types'
 import { ExpenseFormModal } from './ExpenseFormModal'
 
@@ -42,9 +42,11 @@ export function ProjectDetail(): JSX.Element {
     })()
   }, [id])
 
+  // Totals use the billable (marked-up) amount — what actually gets invoiced.
   const totals = useMemo(() => {
-    const total = expenses.reduce((s, e) => s + Number(e.amount), 0)
-    const billed = expenses.filter((e) => e.invoiced).reduce((s, e) => s + Number(e.amount), 0)
+    const billable = (e: Expense): number => withMarkup(Number(e.amount), Number(e.markup_percent))
+    const total = expenses.reduce((s, e) => s + billable(e), 0)
+    const billed = expenses.filter((e) => e.invoiced).reduce((s, e) => s + billable(e), 0)
     return { total, billed, unbilled: total - billed }
   }, [expenses])
 
@@ -115,7 +117,7 @@ export function ProjectDetail(): JSX.Element {
       {/* Totals */}
       <div className="mb-5 grid grid-cols-3 gap-3">
         {[
-          { label: 'Total expenses', value: formatPeso(totals.total) },
+          { label: 'Total billable', value: formatPeso(totals.total) },
           { label: 'Billed', value: formatPeso(totals.billed), tone: 'text-emerald-600' },
           { label: 'Unbilled', value: formatPeso(totals.unbilled), tone: 'text-blue-600' }
         ].map((t) => (
@@ -134,7 +136,9 @@ export function ProjectDetail(): JSX.Element {
             <tr>
               <th className="px-4 py-3 font-medium">Date</th>
               <th className="px-4 py-3 font-medium">Description</th>
-              <th className="px-4 py-3 text-right font-medium">Amount</th>
+              <th className="px-4 py-3 text-right font-medium">Cost</th>
+              <th className="px-4 py-3 text-right font-medium">Markup</th>
+              <th className="px-4 py-3 text-right font-medium">Billable</th>
               <th className="px-4 py-3 font-medium">Billed</th>
               <th className="w-24 px-4 py-3" />
             </tr>
@@ -145,6 +149,12 @@ export function ProjectDetail(): JSX.Element {
                 <td className="px-4 py-3 text-slate-600">{formatTemplateDate(e.expense_date)}</td>
                 <td className="px-4 py-3">{e.description ?? '—'}</td>
                 <td className="px-4 py-3 text-right tabular-nums">{formatPeso(Number(e.amount))}</td>
+                <td className="px-4 py-3 text-right tabular-nums text-slate-500">
+                  {Number(e.markup_percent) ? `${Number(e.markup_percent)}%` : '—'}
+                </td>
+                <td className="px-4 py-3 text-right font-medium tabular-nums">
+                  {formatPeso(withMarkup(Number(e.amount), Number(e.markup_percent)))}
+                </td>
                 <td className="px-4 py-3">
                   <button
                     onClick={() => void toggleInvoiced(e)}
@@ -176,7 +186,7 @@ export function ProjectDetail(): JSX.Element {
             ))}
             {expenses.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-slate-400">
+                <td colSpan={7} className="px-4 py-10 text-center text-slate-400">
                   No expenses yet. Add your first one.
                 </td>
               </tr>

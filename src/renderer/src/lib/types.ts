@@ -40,6 +40,7 @@ export type Expense = {
   project_id: string
   description: string | null
   amount: number
+  markup_percent: number
   expense_date: string
   invoiced: boolean
   invoice_id: string | null
@@ -49,6 +50,7 @@ export type Expense = {
 export type ExpenseInput = {
   description: string
   amount: number
+  markup_percent: number
   expense_date: string
 }
 

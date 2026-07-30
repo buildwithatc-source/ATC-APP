@@ -8,6 +8,11 @@ export function formatPeso(value: number): string {
   return `${n < 0 ? '-' : ''}₱${abs}`
 }
 
+/** Billable (client-facing) amount for an expense: cost + markup. */
+export function withMarkup(amount: number, markupPercent: number): number {
+  return amount * (1 + markupPercent / 100)
+}
+
 /** Parse a possibly-messy numeric input into a finite number (0 on failure). */
 export function toNumber(value: unknown): number {
   const n = typeof value === 'number' ? value : parseFloat(String(value ?? '').replace(/,/g, ''))
