@@ -17,7 +17,7 @@ import { getBusiness } from '@renderer/lib/db/business'
 import { listProjects } from '@renderer/lib/db/projects'
 import { setExpensesInvoiced } from '@renderer/lib/db/expenses'
 import { createInvoice, getInvoice, updateInvoice } from '@renderer/lib/db/invoices'
-import { toNumber, withMarkup } from '@renderer/lib/format'
+import { toNumber } from '@renderer/lib/format'
 import { ClientPicker } from './ClientPicker'
 import { ExpensePicker } from './ExpensePicker'
 import { LineItemsEditor } from './LineItemsEditor'
@@ -26,6 +26,7 @@ import { invoicePdfName, renderInvoiceHtml } from './invoiceHtml'
 import { StatusBadge } from './StatusBadge'
 import {
   computeTotals,
+  effectiveUnitPrice,
   invoiceSchema,
   invoiceToFormValues,
   newInvoiceDefaults,
@@ -120,14 +121,15 @@ export function InvoiceEditor(): JSX.Element {
     items: (values.items ?? []).map((it) => ({
       description: it.description ?? '',
       qty: toNumber(it.qty),
-      unit_price: toNumber(it.unit_price)
+      // Show the marked-up unit price so qty × unit = total stays consistent.
+      unit_price: effectiveUnitPrice(it.unit_price, it.markup_percent, values.markup_percent)
     })),
     adjustments: toNumber(values.adjustments),
     notes: values.notes ?? ''
   }
 
   function buildInput(v: InvoiceFormValues, nextStatus: InvoiceStatus): InvoiceInput {
-    const { subtotal, total } = computeTotals(v.items, v.adjustments)
+    const { subtotal, total } = computeTotals(v.items, v.markup_percent, v.adjustments)
     return {
       client_id: v.client_id || null,
       project_id: v.project_id || null,
@@ -136,6 +138,7 @@ export function InvoiceEditor(): JSX.Element {
       invoice_date: v.invoice_date,
       due_date: v.due_date || null,
       notes: v.notes,
+      markup_percent: toNumber(v.markup_percent),
       adjustments: toNumber(v.adjustments),
       subtotal,
       total,
@@ -143,7 +146,8 @@ export function InvoiceEditor(): JSX.Element {
       items: v.items.map((it) => ({
         description: it.description,
         qty: toNumber(it.qty),
-        unit_price: toNumber(it.unit_price)
+        unit_price: toNumber(it.unit_price),
+        markup_percent: toNumber(it.markup_percent)
       }))
     }
   }
@@ -159,11 +163,8 @@ export function InvoiceEditor(): JSX.Element {
    *  the billable (cost + markup) amount the client sees. */
   function addExpenses(expenses: Expense[]): void {
     for (const e of expenses) {
-      append({
-        description: e.description ?? '',
-        qty: 1,
-        unit_price: withMarkup(Number(e.amount), Number(e.markup_percent))
-      })
+      // Base price = cost; markup is applied at the invoice level.
+      append({ description: e.description ?? '', qty: 1, unit_price: Number(e.amount), markup_percent: 0 })
     }
     setPendingExpenseIds((prev) => [...prev, ...expenses.map((e) => e.id)])
   }
@@ -331,7 +332,8 @@ export function InvoiceEditor(): JSX.Element {
             control={control}
             register={register}
             fields={fields}
-            onAppend={() => append({ description: '', qty: 1, unit_price: 0 })}
+            globalMarkup={toNumber(values.markup_percent)}
+            onAppend={() => append({ description: '', qty: 1, unit_price: 0, markup_percent: 0 })}
             onRemove={remove}
             onMove={(from, to) => move(from, to)}
           />
@@ -342,6 +344,13 @@ export function InvoiceEditor(): JSX.Element {
           )}
 
           <div className="grid grid-cols-2 gap-4">
+            <TextField
+              label="Global markup (%)"
+              type="number"
+              step="any"
+              min="0"
+              {...register('markup_percent')}
+            />
             <TextField
               label="Adjustments (±)"
               type="number"

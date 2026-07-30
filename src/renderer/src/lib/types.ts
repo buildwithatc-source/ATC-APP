@@ -28,6 +28,7 @@ export type Project = {
   description: string | null
   status: ProjectStatus
   contract_budget: number
+  awarded_at: string | null
   created_at: string
 }
 
@@ -70,8 +71,23 @@ export type ExpenseInput = {
   category_id: string | null
   description: string
   amount: number
-  markup_percent: number
   expense_date: string
+}
+
+export type ContractItem = {
+  id: string
+  project_id: string
+  description: string | null
+  quoted_amount: number
+  negotiated_amount: number
+  position: number
+  created_at: string
+}
+
+export type ContractItemInput = {
+  description: string
+  quoted_amount: number
+  negotiated_amount: number
 }
 
 export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'void'
@@ -86,6 +102,7 @@ export type Invoice = {
   invoice_date: string
   due_date: string | null
   notes: string | null
+  markup_percent: number
   adjustments: number
   subtotal: number
   total: number
@@ -102,14 +119,17 @@ export type InvoiceItem = {
   description: string | null
   qty: number
   unit_price: number
+  markup_percent: number
   total: number
 }
 
-/** One editable line row (total is derived, not stored in the form). */
+/** One editable line row (total is derived, not stored in the form).
+ *  unit_price is the base price; markup is applied at invoice level. */
 export type InvoiceItemInput = {
   description: string
   qty: number
   unit_price: number
+  markup_percent: number
 }
 
 /** Everything the editor persists for an invoice. */
@@ -121,6 +141,7 @@ export type InvoiceInput = {
   invoice_date: string
   due_date: string | null
   notes: string | null
+  markup_percent: number
   adjustments: number
   subtotal: number
   total: number

@@ -71,6 +71,7 @@ single migration. Apply it before using the app:
    - [`supabase/migrations/002_projects_expenses.sql`](supabase/migrations/002_projects_expenses.sql) — projects + expenses, and the invoice→project link.
    - [`supabase/migrations/003_expense_markup.sql`](supabase/migrations/003_expense_markup.sql) — per-expense markup %.
    - [`supabase/migrations/004_project_codes_budgets.sql`](supabase/migrations/004_project_codes_budgets.sql) — project codes, contract budget, sub-budget categories.
+   - [`supabase/migrations/005_contract_and_invoice_markup.sql`](supabase/migrations/005_contract_and_invoice_markup.sql) — contract-budget (quotation) scope items + invoice markup.
 3. All are idempotent — safe to re-run; seeds insert only if missing.
 
 This creates `profiles`, `business`, `clients`, `invoices`, `invoice_items`; enables **RLS**
@@ -85,15 +86,20 @@ Each **project** gets an auto code **`ATC<YEAR><NNN>`** (e.g. `ATC2026001`) plus
 Numbers are **gap-filled** per year — delete a test/quote project and its number is freed for
 the next one. Invoices reference the project's **description** (never the code).
 
-A project's detail page has two tabs:
+A project's detail page has three tabs:
 
-- **Expenses** — log **expenses** (description, budget category, cost, **markup %**, date) as work
-  happens. Billable = cost × (1 + markup%). When invoicing, **Bill from project** lists the
-  project's **unbilled** expenses; tick some and they drop in as line items priced at the
-  **billable** amount, then get marked **billed** on save so they won't reappear.
-- **Budget** — set a **contract budget** and **sub-budget categories** (Labor, Painting, Roofing…).
-  Each category shows a completion bar of **actual cost spent** (from expenses assigned to it) vs
-  its budget — **green** under, **amber** near, **red** over.
+- **Expenses** (default) — log **expenses** (description, budget category, cost, date) as work
+  happens. When invoicing, **Bill from project** lists the project's **unbilled** expenses; tick
+  some and they drop in as line items at **cost**, then get marked **billed** on save.
+- **Contract budget** (the quotation) — **scope items** each with a **Quoted** and **Negotiated**
+  price; the negotiated total is the **contract sum**. **Award** the quotation to snapshot the
+  contract budget and auto-seed matching categories in **My budget**.
+- **My budget** — your internal **cost budget** per category (Labor, Painting, Roofing…). Each
+  shows a completion bar of **actual cost spent** vs budget — **green** under, **amber** near,
+  **red** over.
+
+**Markup** lives on the **invoice**, not the expense: a **global markup %** plus an optional
+**per-line %** (they add together), baked into the unit price the client sees.
 
 ## Authentication
 

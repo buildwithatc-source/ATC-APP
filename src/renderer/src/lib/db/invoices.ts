@@ -17,6 +17,7 @@ function invoiceRow(input: InvoiceInput): Record<string, unknown> {
     invoice_date: input.invoice_date,
     due_date: input.due_date || null,
     notes: emptyToNull(input.notes),
+    markup_percent: input.markup_percent,
     adjustments: input.adjustments,
     subtotal: input.subtotal,
     total: input.total,
@@ -30,8 +31,9 @@ function itemRows(invoiceId: string, items: InvoiceItemInput[]): Record<string, 
     position: i,
     description: emptyToNull(it.description),
     qty: it.qty,
-    unit_price: it.unit_price
-    // `total` is a generated column — do not send it.
+    unit_price: it.unit_price,
+    markup_percent: it.markup_percent
+    // `total` is a generated column (qty × unit_price base) — do not send it.
   }))
 }
 

@@ -32,7 +32,6 @@ export async function createExpense(projectId: string, input: ExpenseInput): Pro
       category_id: input.category_id || null,
       description: input.description.trim() || null,
       amount: input.amount,
-      markup_percent: input.markup_percent,
       expense_date: input.expense_date
     })
     .select('*')
@@ -48,7 +47,6 @@ export async function updateExpense(id: string, input: ExpenseInput): Promise<Ex
       category_id: input.category_id || null,
       description: input.description.trim() || null,
       amount: input.amount,
-      markup_percent: input.markup_percent,
       expense_date: input.expense_date
     })
     .eq('id', id)

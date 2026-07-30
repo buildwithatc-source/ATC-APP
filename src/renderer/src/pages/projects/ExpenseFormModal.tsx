@@ -1,17 +1,16 @@
 import { useEffect } from 'react'
-import { useForm, useWatch, type Resolver } from 'react-hook-form'
+import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Modal } from '@renderer/components/Modal'
 import { Button, TextField } from '@renderer/components/ui'
-import { formatPeso, todayManila, toNumber, withMarkup } from '@renderer/lib/format'
+import { todayManila, toNumber } from '@renderer/lib/format'
 import type { BudgetCategory, Expense, ExpenseInput } from '@renderer/lib/types'
 
 const schema = z.object({
   category_id: z.string(),
   description: z.string().min(1, 'Description is required'),
   amount: z.coerce.number().min(0, 'Amount must be ≥ 0'),
-  markup_percent: z.coerce.number().min(0, 'Markup must be ≥ 0'),
   expense_date: z.string().min(1, 'Date is required')
 })
 type FormValues = z.infer<typeof schema>
@@ -33,7 +32,6 @@ export function ExpenseFormModal({
 }: Props): JSX.Element {
   const {
     register,
-    control,
     handleSubmit,
     reset,
     formState: { errors, isSubmitting }
@@ -43,7 +41,6 @@ export function ExpenseFormModal({
       category_id: '',
       description: '',
       amount: 0,
-      markup_percent: 0,
       expense_date: todayManila()
     }
   })
@@ -54,23 +51,16 @@ export function ExpenseFormModal({
         category_id: expense?.category_id ?? '',
         description: expense?.description ?? '',
         amount: expense?.amount ?? 0,
-        markup_percent: expense?.markup_percent ?? 0,
         expense_date: expense?.expense_date ?? todayManila()
       })
     }
   }, [open, expense, reset])
-
-  // Live billable preview.
-  const amountW = useWatch({ control, name: 'amount' })
-  const markupW = useWatch({ control, name: 'markup_percent' })
-  const billable = withMarkup(toNumber(amountW), toNumber(markupW))
 
   const submit = handleSubmit(async (v) =>
     onSubmit({
       category_id: v.category_id || null,
       description: v.description,
       amount: toNumber(v.amount),
-      markup_percent: toNumber(v.markup_percent),
       expense_date: v.expense_date
     })
   )
@@ -121,7 +111,7 @@ export function ExpenseFormModal({
             ))}
           </select>
         </label>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 gap-4">
           <TextField
             label="Cost (₱)"
             type="number"
@@ -131,24 +121,11 @@ export function ExpenseFormModal({
             {...register('amount')}
           />
           <TextField
-            label="Markup (%)"
-            type="number"
-            step="any"
-            min="0"
-            error={errors.markup_percent?.message}
-            {...register('markup_percent')}
-          />
-          <TextField
             label="Date"
             type="date"
             error={errors.expense_date?.message}
             {...register('expense_date')}
           />
-        </div>
-
-        <div className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm ring-1 ring-slate-200">
-          <span className="text-slate-500">Billable to client</span>
-          <span className="font-semibold tabular-nums text-slate-900">{formatPeso(billable)}</span>
         </div>
 
         <button type="submit" className="hidden" />

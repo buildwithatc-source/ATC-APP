@@ -1,11 +1,13 @@
 import { useWatch, type Control, type UseFormRegister } from 'react-hook-form'
-import { formatPeso, toNumber } from '@renderer/lib/format'
-import type { InvoiceFormValues } from './invoiceForm'
+import { formatPeso } from '@renderer/lib/format'
+import { effectiveUnitPrice, type InvoiceFormValues } from './invoiceForm'
 
 type Props = {
   control: Control<InvoiceFormValues>
   register: UseFormRegister<InvoiceFormValues>
   fields: { id: string }[]
+  /** Invoice-wide markup %, added on top of each line's own markup. */
+  globalMarkup: number
   onAppend: () => void
   onRemove: (index: number) => void
   onMove: (from: number, to: number) => void
@@ -15,6 +17,7 @@ export function LineItemsEditor({
   control,
   register,
   fields,
+  globalMarkup,
   onAppend,
   onRemove,
   onMove
@@ -37,10 +40,11 @@ export function LineItemsEditor({
           <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
             <tr>
               <th className="px-2 py-2 text-left font-medium">Description</th>
-              <th className="w-16 px-2 py-2 text-right font-medium">Qty</th>
-              <th className="w-28 px-2 py-2 text-right font-medium">Unit price</th>
-              <th className="w-28 px-2 py-2 text-right font-medium">Total</th>
-              <th className="w-20 px-2 py-2" />
+              <th className="w-14 px-2 py-2 text-right font-medium">Qty</th>
+              <th className="w-24 px-2 py-2 text-right font-medium">Unit price</th>
+              <th className="w-16 px-2 py-2 text-right font-medium">+%</th>
+              <th className="w-24 px-2 py-2 text-right font-medium">Total</th>
+              <th className="w-16 px-2 py-2" />
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -50,6 +54,7 @@ export function LineItemsEditor({
                 index={index}
                 control={control}
                 register={register}
+                globalMarkup={globalMarkup}
                 canRemove={fields.length > 1}
                 isFirst={index === 0}
                 isLast={index === fields.length - 1}
@@ -61,6 +66,10 @@ export function LineItemsEditor({
           </tbody>
         </table>
       </div>
+      <p className="mt-1 text-xs text-slate-400">
+        Total = qty × unit price × (1 + global% + line%). Markup is baked into the price the client
+        sees.
+      </p>
     </div>
   )
 }
@@ -69,6 +78,7 @@ type RowProps = {
   index: number
   control: Control<InvoiceFormValues>
   register: UseFormRegister<InvoiceFormValues>
+  globalMarkup: number
   canRemove: boolean
   isFirst: boolean
   isLast: boolean
@@ -81,6 +91,7 @@ function Row({
   index,
   control,
   register,
+  globalMarkup,
   canRemove,
   isFirst,
   isLast,
@@ -88,10 +99,11 @@ function Row({
   onMoveUp,
   onMoveDown
 }: RowProps): JSX.Element {
-  // Watch just this row's numeric fields to show its live total.
+  // Watch this row's numeric fields to show its live marked-up total.
   const qty = useWatch({ control, name: `items.${index}.qty` })
   const unitPrice = useWatch({ control, name: `items.${index}.unit_price` })
-  const total = toNumber(qty) * toNumber(unitPrice)
+  const lineMarkup = useWatch({ control, name: `items.${index}.markup_percent` })
+  const total = Number(qty || 0) * effectiveUnitPrice(unitPrice, lineMarkup, globalMarkup)
 
   const cell =
     'w-full rounded border border-slate-200 px-2 py-1 text-sm outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent/30'
@@ -117,6 +129,16 @@ function Row({
           min="0"
           className={`${cell} text-right`}
           {...register(`items.${index}.unit_price`)}
+        />
+      </td>
+      <td className="px-2 py-1.5">
+        <input
+          type="number"
+          step="any"
+          min="0"
+          title="Per-line markup %"
+          className={`${cell} text-right`}
+          {...register(`items.${index}.markup_percent`)}
         />
       </td>
       <td className="px-2 py-1.5 text-right tabular-nums text-slate-700">{formatPeso(total)}</td>

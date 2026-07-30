@@ -12,7 +12,7 @@ import {
   setExpensesInvoiced,
   updateExpense
 } from '@renderer/lib/db/expenses'
-import { formatPeso, formatTemplateDate, withMarkup } from '@renderer/lib/format'
+import { formatPeso, formatTemplateDate } from '@renderer/lib/format'
 import type {
   BudgetCategory,
   Expense,
@@ -21,8 +21,15 @@ import type {
 } from '@renderer/lib/types'
 import { ExpenseFormModal } from './ExpenseFormModal'
 import { BudgetTab } from './BudgetTab'
+import { ContractBudgetTab } from './ContractBudgetTab'
 
-type Tab = 'expenses' | 'budget'
+type Tab = 'expenses' | 'contract' | 'budget'
+
+const TAB_LABELS: Record<Tab, string> = {
+  expenses: 'Expenses',
+  contract: 'Contract budget',
+  budget: 'My budget'
+}
 
 export function ProjectDetail(): JSX.Element {
   const { id } = useParams<{ id: string }>()
@@ -64,9 +71,8 @@ export function ProjectDetail(): JSX.Element {
   }, [categories])
 
   const totals = useMemo(() => {
-    const billable = (e: Expense): number => withMarkup(Number(e.amount), Number(e.markup_percent))
-    const total = expenses.reduce((s, e) => s + billable(e), 0)
-    const billed = expenses.filter((e) => e.invoiced).reduce((s, e) => s + billable(e), 0)
+    const total = expenses.reduce((s, e) => s + Number(e.amount), 0)
+    const billed = expenses.filter((e) => e.invoiced).reduce((s, e) => s + Number(e.amount), 0)
     return { total, billed, unbilled: total - billed }
   }, [expenses])
 
@@ -98,6 +104,15 @@ export function ProjectDetail(): JSX.Element {
     await deleteExpense(deleting.id)
     setExpenses((prev) => prev.filter((e) => e.id !== deleting.id))
     setDeleting(null)
+  }
+
+  /** After awarding a quotation: refresh contract budget + seeded categories, jump to My budget. */
+  async function reloadAfterAward(): Promise<void> {
+    if (!id) return
+    const [pr, cats] = await Promise.all([getProject(id), listBudgetCategories(id)])
+    setProject(pr)
+    setCategories(cats)
+    setTab('budget')
   }
 
   if (loading) return <FullscreenSpinner label="Loading project…" />
@@ -138,22 +153,28 @@ export function ProjectDetail(): JSX.Element {
 
       {/* Tabs */}
       <div className="mb-5 flex gap-1 border-b border-slate-200">
-        {(['expenses', 'budget'] as Tab[]).map((t) => (
+        {(['expenses', 'contract', 'budget'] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium capitalize transition ${
+            className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition ${
               tab === t
                 ? 'border-brand-accent text-slate-900'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
-            {t}
+            {TAB_LABELS[t]}
           </button>
         ))}
       </div>
 
-      {tab === 'budget' ? (
+      {tab === 'contract' ? (
+        <ContractBudgetTab
+          projectId={project.id}
+          awardedAt={project.awarded_at}
+          onAwarded={reloadAfterAward}
+        />
+      ) : tab === 'budget' ? (
         <BudgetTab
           project={project}
           expenses={expenses}
@@ -168,7 +189,7 @@ export function ProjectDetail(): JSX.Element {
           {/* Totals */}
           <div className="mb-5 grid grid-cols-3 gap-3">
             {[
-              { label: 'Total billable', value: formatPeso(totals.total) },
+              { label: 'Total cost', value: formatPeso(totals.total) },
               { label: 'Billed', value: formatPeso(totals.billed), tone: 'text-emerald-600' },
               { label: 'Unbilled', value: formatPeso(totals.unbilled), tone: 'text-blue-600' }
             ].map((t) => (
@@ -189,8 +210,6 @@ export function ProjectDetail(): JSX.Element {
                   <th className="px-4 py-3 font-medium">Description</th>
                   <th className="px-4 py-3 font-medium">Category</th>
                   <th className="px-4 py-3 text-right font-medium">Cost</th>
-                  <th className="px-4 py-3 text-right font-medium">Markup</th>
-                  <th className="px-4 py-3 text-right font-medium">Billable</th>
                   <th className="px-4 py-3 font-medium">Billed</th>
                   <th className="w-20 px-4 py-3" />
                 </tr>
@@ -202,12 +221,6 @@ export function ProjectDetail(): JSX.Element {
                     <td className="px-4 py-3">{e.description ?? '—'}</td>
                     <td className="px-4 py-3 text-slate-500">{catName(e.category_id)}</td>
                     <td className="px-4 py-3 text-right tabular-nums">{formatPeso(Number(e.amount))}</td>
-                    <td className="px-4 py-3 text-right tabular-nums text-slate-500">
-                      {Number(e.markup_percent) ? `${Number(e.markup_percent)}%` : '—'}
-                    </td>
-                    <td className="px-4 py-3 text-right font-medium tabular-nums">
-                      {formatPeso(withMarkup(Number(e.amount), Number(e.markup_percent)))}
-                    </td>
                     <td className="px-4 py-3">
                       <button
                         onClick={() => void toggleInvoiced(e)}
@@ -239,7 +252,7 @@ export function ProjectDetail(): JSX.Element {
                 ))}
                 {expenses.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="px-4 py-10 text-center text-slate-400">
+                    <td colSpan={6} className="px-4 py-10 text-center text-slate-400">
                       No expenses yet. Add your first one.
                     </td>
                   </tr>

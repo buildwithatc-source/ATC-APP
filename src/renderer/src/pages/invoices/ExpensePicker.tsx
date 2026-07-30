@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { listUnbilledExpenses } from '@renderer/lib/db/expenses'
-import { formatPeso, formatTemplateDate, withMarkup } from '@renderer/lib/format'
+import { formatPeso, formatTemplateDate } from '@renderer/lib/format'
 import type { Expense } from '@renderer/lib/types'
 
 type Props = {
@@ -51,11 +51,9 @@ export function ExpensePicker({ projectId, onAdd }: Props): JSX.Element {
     setSelected(new Set())
   }
 
-  const billableOf = (e: Expense): number => withMarkup(Number(e.amount), Number(e.markup_percent))
-
   const selectedTotal = expenses
     .filter((e) => selected.has(e.id))
-    .reduce((s, e) => s + billableOf(e), 0)
+    .reduce((s, e) => s + Number(e.amount), 0)
 
   return (
     <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-3">
@@ -87,12 +85,9 @@ export function ExpensePicker({ projectId, onAdd }: Props): JSX.Element {
                     className="h-4 w-4 accent-brand-accent"
                   />
                   <span className="flex-1 text-sm text-slate-700">{e.description ?? '—'}</span>
-                  {Number(e.markup_percent) > 0 && (
-                    <span className="text-xs text-slate-400">+{Number(e.markup_percent)}%</span>
-                  )}
                   <span className="text-xs text-slate-400">{formatTemplateDate(e.expense_date)}</span>
                   <span className="w-24 text-right text-sm tabular-nums text-slate-700">
-                    {formatPeso(billableOf(e))}
+                    {formatPeso(Number(e.amount))}
                   </span>
                 </label>
               </li>
