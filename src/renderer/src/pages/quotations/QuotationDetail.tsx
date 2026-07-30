@@ -3,17 +3,29 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Button } from '@renderer/components/ui'
 import { Modal } from '@renderer/components/Modal'
 import { FullscreenSpinner } from '@renderer/components/FullscreenSpinner'
-import { formatPeso } from '@renderer/lib/format'
+import { formatPeso, toNumber } from '@renderer/lib/format'
 import {
   createQuotationItem,
   deleteQuotationItem,
   getQuotation,
   listQuotationItems,
   pushQuotationToProject,
+  quotationTotals,
+  updateQuotationFinancials,
   updateQuotationItem
 } from '@renderer/lib/db/quotations'
-import type { ContractItemInput, QuotationItem, QuotationWithClient } from '@renderer/lib/types'
-import { ContractItemFormModal } from '@renderer/pages/projects/ContractItemFormModal'
+import type { QuotationItem, QuotationItemInput, QuotationWithClient } from '@renderer/lib/types'
+import { QuotationItemFormModal } from './QuotationItemFormModal'
+
+/** Common scope items so you don't retype them. */
+const SCOPE_TEMPLATES = [
+  'Salary',
+  'Material',
+  'Demolition',
+  'Hauling of debris',
+  'Painting',
+  'Installation work'
+]
 
 export function QuotationDetail(): JSX.Element {
   const { id } = useParams<{ id: string }>()
@@ -22,6 +34,9 @@ export function QuotationDetail(): JSX.Element {
   const [items, setItems] = useState<QuotationItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  const [supervision, setSupervision] = useState('0')
+  const [contingency, setContingency] = useState('0')
 
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<QuotationItem | null>(null)
@@ -36,6 +51,8 @@ export function QuotationDetail(): JSX.Element {
         const [q, its] = await Promise.all([getQuotation(id), listQuotationItems(id)])
         setQuotation(q)
         setItems(its)
+        setSupervision(String(q.supervision_percent ?? 0))
+        setContingency(String(q.contingency_percent ?? 0))
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to load quotation')
       } finally {
@@ -44,13 +61,21 @@ export function QuotationDetail(): JSX.Element {
     })()
   }, [id])
 
-  const totals = useMemo(() => {
-    const quoted = items.reduce((s, i) => s + Number(i.quoted_amount), 0)
-    const negotiated = items.reduce((s, i) => s + Number(i.negotiated_amount), 0)
-    return { quoted, negotiated }
-  }, [items])
+  const totals = useMemo(
+    () => quotationTotals(items, toNumber(supervision), toNumber(contingency)),
+    [items, supervision, contingency]
+  )
 
-  async function handleSubmit(input: ContractItemInput): Promise<void> {
+  async function saveFinancials(): Promise<void> {
+    if (!id) return
+    try {
+      await updateQuotationFinancials(id, toNumber(supervision), toNumber(contingency))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save')
+    }
+  }
+
+  async function handleSubmit(input: QuotationItemInput): Promise<void> {
     if (!id) return
     if (editing) {
       const updated = await updateQuotationItem(editing.id, input)
@@ -61,6 +86,12 @@ export function QuotationDetail(): JSX.Element {
     }
     setFormOpen(false)
     setEditing(null)
+  }
+
+  async function addTemplate(name: string): Promise<void> {
+    if (!id) return
+    const created = await createQuotationItem(id, { description: name, amount: 0 })
+    setItems((prev) => [...prev, created])
   }
 
   async function confirmDelete(): Promise<void> {
@@ -75,7 +106,11 @@ export function QuotationDetail(): JSX.Element {
     setPushing(true)
     setError(null)
     try {
-      const project = await pushQuotationToProject(quotation, items)
+      await saveFinancials()
+      const project = await pushQuotationToProject(
+        { ...quotation, supervision_percent: toNumber(supervision), contingency_percent: toNumber(contingency) },
+        items
+      )
       navigate(`/projects/${project.id}`)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to push to project')
@@ -84,17 +119,19 @@ export function QuotationDetail(): JSX.Element {
   }
 
   if (loading) return <FullscreenSpinner label="Loading quotation…" />
-  if (error || !quotation)
+  if (error && !quotation)
     return (
       <div className="p-6">
-        <div className="rounded-lg bg-red-50 p-4 text-sm text-red-700 ring-1 ring-red-200">
-          {error ?? 'Quotation not found'}
-        </div>
+        <div className="rounded-lg bg-red-50 p-4 text-sm text-red-700 ring-1 ring-red-200">{error}</div>
       </div>
     )
+  if (!quotation) return <div className="p-6">Not found</div>
+
+  const pctInput =
+    'w-24 rounded-lg border border-slate-300 px-3 py-2 text-sm text-right outline-none focus:border-brand-accent focus:ring-2 focus:ring-brand-accent/30'
 
   return (
-    <div className="mx-auto max-w-4xl p-6">
+    <div className="mx-auto max-w-3xl p-6">
       <button
         onClick={() => navigate('/quotations')}
         className="text-sm text-slate-500 hover:underline"
@@ -102,13 +139,11 @@ export function QuotationDetail(): JSX.Element {
         ← Quotations
       </button>
 
-      <div className="mt-2 mb-5 flex items-start justify-between">
-        <div>
-          <h1 className="font-mono text-2xl font-semibold">{quotation.code}</h1>
-          <p className="text-sm text-slate-500">
-            {quotation.title || 'Untitled'} · {quotation.clients?.name ?? 'No client'}
-          </p>
-        </div>
+      <div className="mt-2 mb-5">
+        <h1 className="font-mono text-2xl font-semibold">{quotation.code}</h1>
+        <p className="text-sm text-slate-500">
+          {quotation.title || 'Untitled'} · {quotation.clients?.name ?? 'No client'}
+        </p>
       </div>
 
       {error && (
@@ -117,19 +152,21 @@ export function QuotationDetail(): JSX.Element {
         </div>
       )}
 
-      {/* Summary */}
-      <div className="mb-5 grid grid-cols-2 gap-3">
-        <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
-          <div className="text-xs uppercase tracking-wide text-slate-400">Total quoted</div>
-          <div className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
-            {formatPeso(totals.quoted)}
-          </div>
-        </div>
-        <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
-          <div className="text-xs uppercase tracking-wide text-slate-400">Contract sum (negotiated)</div>
-          <div className="mt-1 text-lg font-semibold tabular-nums text-emerald-600">
-            {formatPeso(totals.negotiated)}
-          </div>
+      {/* Template quick-add */}
+      <div className="mb-3">
+        <span className="mb-1 block text-xs uppercase tracking-wide text-slate-400">
+          Quick add
+        </span>
+        <div className="flex flex-wrap gap-2">
+          {SCOPE_TEMPLATES.map((name) => (
+            <button
+              key={name}
+              onClick={() => void addTemplate(name)}
+              className="rounded-full border border-slate-300 px-3 py-1 text-sm text-slate-600 hover:border-brand-accent hover:text-slate-900"
+            >
+              + {name}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -150,8 +187,7 @@ export function QuotationDetail(): JSX.Element {
           <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
             <tr>
               <th className="px-4 py-2 font-medium">Description</th>
-              <th className="px-4 py-2 text-right font-medium">Quoted</th>
-              <th className="px-4 py-2 text-right font-medium">Negotiated</th>
+              <th className="px-4 py-2 text-right font-medium">Amount</th>
               <th className="w-24 px-4 py-2" />
             </tr>
           </thead>
@@ -159,11 +195,8 @@ export function QuotationDetail(): JSX.Element {
             {items.map((i) => (
               <tr key={i.id} className="hover:bg-slate-50">
                 <td className="px-4 py-2">{i.description ?? '—'}</td>
-                <td className="px-4 py-2 text-right tabular-nums text-slate-500">
-                  {formatPeso(Number(i.quoted_amount))}
-                </td>
                 <td className="px-4 py-2 text-right font-medium tabular-nums">
-                  {formatPeso(Number(i.negotiated_amount))}
+                  {formatPeso(Number(i.quoted_amount))}
                 </td>
                 <td className="px-4 py-2 text-right">
                   <button
@@ -183,8 +216,8 @@ export function QuotationDetail(): JSX.Element {
             ))}
             {items.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-slate-400">
-                  No scope items yet. Add the work you&apos;re quoting.
+                <td colSpan={3} className="px-4 py-8 text-center text-slate-400">
+                  No scope items yet. Use Quick add or + Add item.
                 </td>
               </tr>
             )}
@@ -192,14 +225,62 @@ export function QuotationDetail(): JSX.Element {
         </table>
       </div>
 
+      {/* Add-ons + totals */}
+      <div className="mt-4 rounded-xl bg-white p-5 ring-1 ring-slate-200">
+        <div className="space-y-2 text-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-slate-500">Scope subtotal</span>
+            <span className="tabular-nums">{formatPeso(totals.scope)}</span>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-2 text-slate-600">
+              Supervision &amp; profit
+              <input
+                type="number"
+                step="any"
+                min="0"
+                className={pctInput}
+                value={supervision}
+                onChange={(e) => setSupervision(e.target.value)}
+                onBlur={() => void saveFinancials()}
+              />
+              <span className="text-slate-400">% of scope</span>
+            </span>
+            <span className="tabular-nums">{formatPeso(totals.supervision)}</span>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-2 text-slate-600">
+              Contingencies
+              <input
+                type="number"
+                step="any"
+                min="0"
+                className={pctInput}
+                value={contingency}
+                onChange={(e) => setContingency(e.target.value)}
+                onBlur={() => void saveFinancials()}
+              />
+              <span className="text-slate-400">% of supervision</span>
+            </span>
+            <span className="tabular-nums">{formatPeso(totals.contingency)}</span>
+          </div>
+
+          <div className="mt-1 flex items-center justify-between border-t border-slate-200 pt-2 text-lg font-bold">
+            <span>Grand total</span>
+            <span className="tabular-nums">{formatPeso(totals.grandTotal)}</span>
+          </div>
+        </div>
+      </div>
+
       {/* Push to project */}
-      <div className="mt-5 flex items-center justify-between rounded-xl bg-white p-4 ring-1 ring-slate-200">
+      <div className="mt-4 flex items-center justify-between rounded-xl bg-white p-4 ring-1 ring-slate-200">
         <div>
           <p className="font-medium text-slate-800">Push to project</p>
           <p className="text-xs text-slate-500">
-            Creates a project (with an ATC code), sets its contract budget to{' '}
-            {formatPeso(totals.negotiated)}, seeds the budget categories, and removes this quotation
-            from the list.
+            Creates a project (ATC code) with a contract budget of {formatPeso(totals.grandTotal)},
+            seeds the budget categories, and removes this quotation from the list.
           </p>
         </div>
         <Button onClick={() => setPushOpen(true)} disabled={items.length === 0}>
@@ -207,7 +288,7 @@ export function QuotationDetail(): JSX.Element {
         </Button>
       </div>
 
-      <ContractItemFormModal
+      <QuotationItemFormModal
         open={formOpen}
         item={editing}
         onClose={() => {
@@ -258,7 +339,7 @@ export function QuotationDetail(): JSX.Element {
       >
         <p className="text-sm text-slate-600">
           This creates a new project from <span className="font-mono">{quotation.code}</span> with a
-          contract budget of <span className="font-semibold">{formatPeso(totals.negotiated)}</span>,
+          contract budget of <span className="font-semibold">{formatPeso(totals.grandTotal)}</span>,
           then takes you to the project. The quotation leaves this list.
         </p>
       </Modal>

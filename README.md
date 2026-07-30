@@ -73,6 +73,7 @@ single migration. Apply it before using the app:
    - [`supabase/migrations/004_project_codes_budgets.sql`](supabase/migrations/004_project_codes_budgets.sql) — project codes, contract budget, sub-budget categories.
    - [`supabase/migrations/005_contract_and_invoice_markup.sql`](supabase/migrations/005_contract_and_invoice_markup.sql) — contract-budget scope items + invoice markup.
    - [`supabase/migrations/006_quotations.sql`](supabase/migrations/006_quotations.sql) — standalone quotations (QTN codes) that push to projects.
+   - [`supabase/migrations/007_quotation_addons.sql`](supabase/migrations/007_quotation_addons.sql) — quotation supervision & contingency percentages.
 3. All are idempotent — safe to re-run; seeds insert only if missing.
 
 This creates `profiles`, `business`, `clients`, `invoices`, `invoice_items`; enables **RLS**
@@ -84,11 +85,14 @@ record and the 9 clients.
 ## Quotations → projects
 
 A **Quotation** (own page, numbered **`QTN<YEAR><NNN>`**) is where you price a job for a client:
-scope items with **Quoted → Negotiated** prices. When you **Push to project**, it creates a
-**project** (with its `ATC<YEAR><NNN>` code), copies the scope items into the project's contract
-budget, sets the contract sum, seeds the My-budget categories, and drops off the quotation list.
-Un-pushed quotations stay on the Quotation page and never consume an ATC project number. You can
-also still create a project directly.
+**scope items** each with a single **amount** (with a quick-add template of common items — Salary,
+Material, Demolition, Hauling of debris, Painting, Installation work…), plus **Supervision & profit
+%** (of the scope subtotal) and **Contingencies %** (of the supervision amount). The **grand total**
+= scope + supervision + contingencies. When you **Push to project**, it creates a **project** (with
+its `ATC<YEAR><NNN>` code), copies the scope + add-on lines into the project's contract budget, sets
+the contract budget to the grand total, seeds the My-budget categories from the scope items, and
+drops off the quotation list. Un-pushed quotations never consume an ATC project number. You can also
+still create a project directly.
 
 ## Projects & expenses
 

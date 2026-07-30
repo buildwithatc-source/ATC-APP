@@ -104,6 +104,8 @@ export type Quotation = {
   quotation_no: number | null
   client_id: string | null
   title: string | null
+  supervision_percent: number
+  contingency_percent: number
   project_id: string | null
   created_at: string
 }
@@ -119,10 +121,16 @@ export type QuotationItem = {
   id: string
   quotation_id: string
   description: string | null
+  /** The single scope amount (stored in quoted_amount; negotiated is unused). */
   quoted_amount: number
   negotiated_amount: number
   position: number
   created_at: string
+}
+
+export type QuotationItemInput = {
+  description: string
+  amount: number
 }
 
 export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'void'
