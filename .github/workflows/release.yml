@@ -14,6 +14,9 @@ jobs:
   release:
     strategy:
       fail-fast: false
+      # Publish one platform at a time — concurrent publishes to the same
+      # GitHub Release can race and drop assets (e.g. latest.yml / the exe).
+      max-parallel: 1
       matrix:
         include:
           - os: windows-latest
