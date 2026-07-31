@@ -133,6 +133,13 @@ export type QuotationItemInput = {
   amount: number
 }
 
+export type ScopeTemplate = {
+  id: string
+  name: string
+  position: number
+  created_at: string
+}
+
 export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'void'
 
 export type Invoice = {

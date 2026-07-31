@@ -16,16 +16,7 @@ import {
 } from '@renderer/lib/db/quotations'
 import type { QuotationItem, QuotationItemInput, QuotationWithClient } from '@renderer/lib/types'
 import { QuotationItemFormModal } from './QuotationItemFormModal'
-
-/** Common scope items so you don't retype them. */
-const SCOPE_TEMPLATES = [
-  'Salary',
-  'Material',
-  'Demolition',
-  'Hauling of debris',
-  'Painting',
-  'Installation work'
-]
+import { QuickAddMenu } from './QuickAddMenu'
 
 export function QuotationDetail(): JSX.Element {
   const { id } = useParams<{ id: string }>()
@@ -88,10 +79,12 @@ export function QuotationDetail(): JSX.Element {
     setEditing(null)
   }
 
-  async function addTemplate(name: string): Promise<void> {
+  async function addTemplates(names: string[]): Promise<void> {
     if (!id) return
-    const created = await createQuotationItem(id, { description: name, amount: 0 })
-    setItems((prev) => [...prev, created])
+    for (const name of names) {
+      const created = await createQuotationItem(id, { description: name, amount: 0 })
+      setItems((prev) => [...prev, created])
+    }
   }
 
   async function confirmDelete(): Promise<void> {
@@ -128,7 +121,7 @@ export function QuotationDetail(): JSX.Element {
   if (!quotation) return <div className="p-6">Not found</div>
 
   const pctInput =
-    'w-24 rounded-lg border border-slate-300 px-3 py-2 text-sm text-right outline-none focus:border-brand-accent focus:ring-2 focus:ring-brand-accent/30'
+    'w-12 rounded-lg border border-slate-300 px-2 py-1.5 text-sm text-right outline-none focus:border-brand-accent focus:ring-2 focus:ring-brand-accent/30'
 
   return (
     <div className="mx-auto max-w-3xl p-6">
@@ -154,20 +147,7 @@ export function QuotationDetail(): JSX.Element {
 
       {/* Template quick-add */}
       <div className="mb-3">
-        <span className="mb-1 block text-xs uppercase tracking-wide text-slate-400">
-          Quick add
-        </span>
-        <div className="flex flex-wrap gap-2">
-          {SCOPE_TEMPLATES.map((name) => (
-            <button
-              key={name}
-              onClick={() => void addTemplate(name)}
-              className="rounded-full border border-slate-300 px-3 py-1 text-sm text-slate-600 hover:border-brand-accent hover:text-slate-900"
-            >
-              + {name}
-            </button>
-          ))}
-        </div>
+        <QuickAddMenu onAddItems={addTemplates} />
       </div>
 
       {/* Scope items */}
