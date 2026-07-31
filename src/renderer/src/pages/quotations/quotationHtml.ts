@@ -54,9 +54,9 @@ export function renderQuotationHtml(data: QuotationSheetData): string {
     )
     .join('')
 
-  const logo = biz?.logo_url
-    ? `<img src="${esc(biz.logo_url)}" alt="Logo" style="width:100%;height:100%;object-fit:contain" />`
-    : 'ATC'
+  const logoHtml = biz?.logo_url
+    ? `<img class="logo-img" src="${esc(biz.logo_url)}" alt="Logo" />`
+    : `<div class="logo">ATC</div>`
 
   return `<!doctype html>
 <html>
@@ -80,6 +80,7 @@ export function renderQuotationHtml(data: QuotationSheetData): string {
     width: 18mm; height: 18mm; border-radius: 4px; background: #1e293b; color: #fff;
     display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12pt;
   }
+  .logo-img { height: 24mm; width: auto; max-width: 90mm; object-fit: contain; display: block; }
   .biz { text-align: right; line-height: 1.35; }
   .biz .name { font-weight: 700; font-size: 12.5pt; }
   .title { margin-top: 10mm; }
@@ -120,7 +121,7 @@ export function renderQuotationHtml(data: QuotationSheetData): string {
 <body>
   <div class="sheet">
     <div class="header">
-      <div class="logo">${logo}</div>
+      ${logoHtml}
       <div class="biz">
         <div class="name">${esc(biz?.name ?? 'Build With ATC')}</div>
         <div>${esc(biz?.address_line1 ?? '26 A. Mabini St., Victoria Shoppesville')}</div>

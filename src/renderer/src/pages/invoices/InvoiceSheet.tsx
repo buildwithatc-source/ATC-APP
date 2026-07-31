@@ -50,13 +50,13 @@ export function InvoiceSheet({ data }: { data: SheetData }): JSX.Element {
     >
       {/* Header: logo left, business info right */}
       <header className="flex items-start justify-between">
-        <div className="flex h-16 w-16 items-center justify-center rounded-md bg-slate-800 text-sm font-bold text-white">
-          {business?.logo_url ? (
-            <img src={business.logo_url} alt="Logo" className="h-full w-full object-contain" />
-          ) : (
-            'ATC'
-          )}
-        </div>
+        {business?.logo_url ? (
+          <img src={business.logo_url} alt="Logo" className="h-24 w-auto max-w-[90mm] object-contain" />
+        ) : (
+          <div className="flex h-16 w-16 items-center justify-center rounded-md bg-slate-800 text-sm font-bold text-white">
+            ATC
+          </div>
+        )}
         <div className="text-right leading-snug">
           <div className="text-base font-bold">{business?.name ?? 'Build With ATC'}</div>
           <div>{business?.address_line1 ?? '26 A. Mabini St., Victoria Shoppesville'}</div>
