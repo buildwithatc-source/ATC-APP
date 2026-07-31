@@ -15,7 +15,7 @@ export type ClientInput = {
   contact_number: string | null
 }
 
-export type ProjectStatus = 'active' | 'archived'
+export type ProjectStatus = 'active' | 'complete' | 'archived'
 
 export type Project = {
   id: string

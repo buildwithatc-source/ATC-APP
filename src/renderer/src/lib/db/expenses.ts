@@ -61,6 +61,17 @@ export async function deleteExpense(id: string): Promise<void> {
   if (error) throw new Error(error.message)
 }
 
+/** Total expense cost per project id, across all projects. */
+export async function getExpenseTotalsByProject(): Promise<Record<string, number>> {
+  const { data, error } = await supabase.from('expenses').select('project_id, amount')
+  if (error) throw new Error(error.message)
+  const totals: Record<string, number> = {}
+  for (const e of data ?? []) {
+    totals[e.project_id] = (totals[e.project_id] ?? 0) + Number(e.amount)
+  }
+  return totals
+}
+
 /** Mark expenses billed (or un-billed) and link them to an invoice. */
 export async function setExpensesInvoiced(
   ids: string[],

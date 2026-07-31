@@ -74,6 +74,9 @@ single migration. Apply it before using the app:
    - [`supabase/migrations/005_contract_and_invoice_markup.sql`](supabase/migrations/005_contract_and_invoice_markup.sql) — contract-budget scope items + invoice markup.
    - [`supabase/migrations/006_quotations.sql`](supabase/migrations/006_quotations.sql) — standalone quotations (QTN codes) that push to projects.
    - [`supabase/migrations/007_quotation_addons.sql`](supabase/migrations/007_quotation_addons.sql) — quotation supervision & contingency percentages.
+   - [`supabase/migrations/008_scope_templates.sql`](supabase/migrations/008_scope_templates.sql) — reusable quotation scope-item templates.
+   - [`supabase/migrations/009_quotation_notes.sql`](supabase/migrations/009_quotation_notes.sql) — quotation notes.
+   - [`supabase/migrations/010_project_status_complete.sql`](supabase/migrations/010_project_status_complete.sql) — project "complete" status.
 3. All are idempotent — safe to re-run; seeds insert only if missing.
 
 This creates `profiles`, `business`, `clients`, `invoices`, `invoice_items`; enables **RLS**

@@ -9,7 +9,7 @@ import type { Client, Project, ProjectInput } from '@renderer/lib/types'
 const schema = z.object({
   name: z.string(),
   client_id: z.string().min(1, 'Select a client'),
-  status: z.enum(['active', 'archived'])
+  status: z.enum(['active', 'complete', 'archived'])
 })
 type FormValues = z.infer<typeof schema>
 
@@ -111,6 +111,7 @@ export function ProjectFormModal({
           <span className="mb-1 block text-sm font-medium text-slate-700">Status</span>
           <select className={control} {...register('status')}>
             <option value="active">Active</option>
+            <option value="complete">Complete</option>
             <option value="archived">Archived</option>
           </select>
         </label>

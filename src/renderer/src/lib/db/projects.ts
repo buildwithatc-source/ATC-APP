@@ -64,6 +64,11 @@ export async function updateProject(id: string, input: ProjectInput): Promise<Pr
   return data
 }
 
+export async function setProjectStatus(id: string, status: Project['status']): Promise<void> {
+  const { error } = await supabase.from('projects').update({ status }).eq('id', id)
+  if (error) throw new Error(error.message)
+}
+
 export async function setContractBudget(id: string, amount: number): Promise<void> {
   const { error } = await supabase.from('projects').update({ contract_budget: amount }).eq('id', id)
   if (error) throw new Error(error.message)

@@ -2,26 +2,44 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button, TextField } from '@renderer/components/ui'
 import { FullscreenSpinner } from '@renderer/components/FullscreenSpinner'
+import { ConfirmDeleteModal } from '@renderer/components/ConfirmDeleteModal'
 import { listClients } from '@renderer/lib/db/clients'
-import { createProject, listProjects } from '@renderer/lib/db/projects'
-import type { Client, ProjectInput, ProjectWithClient } from '@renderer/lib/types'
+import {
+  createProject,
+  deleteProject,
+  listProjects,
+  setProjectStatus
+} from '@renderer/lib/db/projects'
+import { getExpenseTotalsByProject } from '@renderer/lib/db/expenses'
+import { formatPeso } from '@renderer/lib/format'
+import type { Client, ProjectInput, ProjectStatus, ProjectWithClient } from '@renderer/lib/types'
 import { ProjectFormModal } from './ProjectFormModal'
+import { ProjectStatusSelect } from './ProjectStatusSelect'
 
 export function Projects(): JSX.Element {
   const navigate = useNavigate()
   const [projects, setProjects] = useState<ProjectWithClient[]>([])
   const [clients, setClients] = useState<Client[]>([])
+  const [expenseTotals, setExpenseTotals] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [formOpen, setFormOpen] = useState(false)
+  const [statusBusy, setStatusBusy] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState<ProjectWithClient | null>(null)
+  const [deleteBusy, setDeleteBusy] = useState(false)
 
   useEffect(() => {
     ;(async () => {
       try {
-        const [pr, cl] = await Promise.all([listProjects(), listClients()])
+        const [pr, cl, totals] = await Promise.all([
+          listProjects(),
+          listClients(),
+          getExpenseTotalsByProject()
+        ])
         setProjects(pr)
         setClients(cl)
+        setExpenseTotals(totals)
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to load projects')
       } finally {
@@ -40,16 +58,48 @@ export function Projects(): JSX.Element {
 
   async function handleCreate(input: ProjectInput): Promise<void> {
     const created = await createProject(input)
-    // Reload to pick up the client join for display.
     setProjects(await listProjects())
     setFormOpen(false)
     navigate(`/projects/${created.id}`)
   }
 
+  async function changeStatus(p: ProjectWithClient, status: ProjectStatus): Promise<void> {
+    const prev = p.status
+    setStatusBusy(p.id)
+    setProjects((ps) => ps.map((x) => (x.id === p.id ? { ...x, status } : x)))
+    try {
+      await setProjectStatus(p.id, status)
+    } catch {
+      setProjects((ps) => ps.map((x) => (x.id === p.id ? { ...x, status: prev } : x)))
+    } finally {
+      setStatusBusy(null)
+    }
+  }
+
+  async function confirmDelete(): Promise<void> {
+    if (!deleting) return
+    setDeleteBusy(true)
+    setError(null)
+    try {
+      await deleteProject(deleting.id)
+      setProjects((ps) => ps.filter((x) => x.id !== deleting.id))
+      setDeleting(null)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to delete project')
+    } finally {
+      setDeleteBusy(false)
+    }
+  }
+
+  /** Profit = contract (total quote) − total expense; only for completed projects. */
+  function profitOf(p: ProjectWithClient): number {
+    return Number(p.contract_budget) - (expenseTotals[p.id] ?? 0)
+  }
+
   if (loading) return <FullscreenSpinner label="Loading projects…" />
 
   return (
-    <div className="mx-auto max-w-4xl p-6">
+    <div className="mx-auto max-w-5xl p-6">
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Projects</h1>
@@ -67,53 +117,73 @@ export function Projects(): JSX.Element {
         />
       </div>
 
-      {error ? (
-        <div className="rounded-lg bg-red-50 p-4 text-sm text-red-700 ring-1 ring-red-200">{error}</div>
-      ) : (
-        <div className="overflow-hidden rounded-xl bg-white ring-1 ring-slate-200">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-              <tr>
-                <th className="px-4 py-3 font-medium">Code</th>
-                <th className="px-4 py-3 font-medium">Description</th>
-                <th className="px-4 py-3 font-medium">Client</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filtered.map((p) => (
-                <tr
-                  key={p.id}
-                  onClick={() => navigate(`/projects/${p.id}`)}
-                  className="cursor-pointer hover:bg-slate-50"
-                >
-                  <td className="px-4 py-3 font-mono font-medium text-slate-900">{p.code}</td>
-                  <td className="px-4 py-3 text-slate-700">{p.name || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600">{p.clients?.name ?? '—'}</td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${
-                        p.status === 'active'
-                          ? 'bg-emerald-100 text-emerald-700'
-                          : 'bg-slate-100 text-slate-500'
-                      }`}
-                    >
-                      {p.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="px-4 py-10 text-center text-slate-400">
-                    {search ? 'No projects match your search.' : 'No projects yet.'}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+      {error && (
+        <div className="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-700 ring-1 ring-red-200">
+          {error}
         </div>
       )}
+
+      <div className="overflow-hidden rounded-xl bg-white ring-1 ring-slate-200">
+        <table className="w-full text-left text-sm">
+          <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+            <tr>
+              <th className="px-4 py-3 font-medium">Code</th>
+              <th className="px-4 py-3 font-medium">Description</th>
+              <th className="px-4 py-3 font-medium">Client</th>
+              <th className="px-4 py-3 font-medium">Status</th>
+              <th className="px-4 py-3 text-right font-medium">Profit</th>
+              <th className="w-16 px-4 py-3" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {filtered.map((p) => (
+              <tr
+                key={p.id}
+                onClick={() => navigate(`/projects/${p.id}`)}
+                className="cursor-pointer hover:bg-slate-50"
+              >
+                <td className="px-4 py-3 font-mono font-medium text-slate-900">{p.code}</td>
+                <td className="px-4 py-3 text-slate-700">{p.name || '—'}</td>
+                <td className="px-4 py-3 text-slate-600">{p.clients?.name ?? '—'}</td>
+                <td className="px-4 py-3">
+                  <ProjectStatusSelect
+                    value={p.status}
+                    busy={statusBusy === p.id}
+                    onChange={(s) => void changeStatus(p, s)}
+                  />
+                </td>
+                <td className="px-4 py-3 text-right tabular-nums">
+                  {p.status === 'complete' ? (
+                    <span className={profitOf(p) >= 0 ? 'text-emerald-600' : 'text-red-600'}>
+                      {formatPeso(profitOf(p))}
+                    </span>
+                  ) : (
+                    <span className="text-slate-300">—</span>
+                  )}
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setDeleting(p)
+                    }}
+                    className="text-red-600 hover:underline"
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={6} className="px-4 py-10 text-center text-slate-400">
+                  {search ? 'No projects match your search.' : 'No projects yet.'}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
 
       <ProjectFormModal
         open={formOpen}
@@ -121,6 +191,23 @@ export function Projects(): JSX.Element {
         clients={clients}
         onClose={() => setFormOpen(false)}
         onSubmit={handleCreate}
+      />
+
+      <ConfirmDeleteModal
+        open={deleting !== null}
+        title="Delete project"
+        confirmText={deleting?.code ?? ''}
+        busy={deleteBusy}
+        onClose={() => setDeleting(null)}
+        onConfirm={() => void confirmDelete()}
+        description={
+          <>
+            This permanently deletes <span className="font-semibold">{deleting?.code}</span>
+            {deleting?.name ? ` (${deleting.name})` : ''} and all its{' '}
+            <span className="font-semibold">expenses, budget categories, and contract items</span>.
+            This can&apos;t be undone.
+          </>
+        }
       />
     </div>
   )
