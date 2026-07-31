@@ -16,3 +16,14 @@ body {
   margin: 0;
   @apply bg-slate-100 text-slate-900 font-sans antialiased;
 }
+
+/* Remove the up/down spinner arrows on all number inputs. */
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}

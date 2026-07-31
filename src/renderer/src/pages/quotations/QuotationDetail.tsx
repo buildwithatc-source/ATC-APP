@@ -26,8 +26,8 @@ export function QuotationDetail(): JSX.Element {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const [supervision, setSupervision] = useState('0')
-  const [contingency, setContingency] = useState('0')
+  const [supervision, setSupervision] = useState('')
+  const [contingency, setContingency] = useState('')
   // In-progress inline amount edits, keyed by item id.
   const [amountDrafts, setAmountDrafts] = useState<Record<string, string>>({})
 
@@ -44,8 +44,8 @@ export function QuotationDetail(): JSX.Element {
         const [q, its] = await Promise.all([getQuotation(id), listQuotationItems(id)])
         setQuotation(q)
         setItems(its)
-        setSupervision(String(q.supervision_percent ?? 0))
-        setContingency(String(q.contingency_percent ?? 0))
+        setSupervision(q.supervision_percent ? String(q.supervision_percent) : '')
+        setContingency(q.contingency_percent ? String(q.contingency_percent) : '')
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to load quotation')
       } finally {
@@ -91,7 +91,9 @@ export function QuotationDetail(): JSX.Element {
 
   // --- Inline amount editing ---
   function amountValue(i: QuotationItem): string {
-    return amountDrafts[i.id] ?? String(Number(i.quoted_amount))
+    if (amountDrafts[i.id] !== undefined) return amountDrafts[i.id]
+    // Show blank (not "0") for an unset amount so it's ready to type into.
+    return Number(i.quoted_amount) === 0 ? '' : String(Number(i.quoted_amount))
   }
 
   function onAmountChange(i: QuotationItem, value: string): void {
