@@ -152,7 +152,7 @@ export function QuotationDetail(): JSX.Element {
   if (!quotation) return <div className="p-6">Not found</div>
 
   const pctInput =
-    'w-12 rounded-lg border border-slate-300 px-2 py-1.5 text-sm text-right outline-none focus:border-brand-accent focus:ring-2 focus:ring-brand-accent/30'
+    'w-11 rounded-lg border border-slate-300 px-1.5 py-1 text-sm text-center outline-none focus:border-brand-accent focus:ring-2 focus:ring-brand-accent/30'
 
   return (
     <div className="mx-auto max-w-3xl p-6">
@@ -259,12 +259,11 @@ export function QuotationDetail(): JSX.Element {
             <span className="flex items-center gap-2 text-slate-600">
               Supervision &amp; profit
               <input
-                type="number"
-                step="any"
-                min="0"
+                type="text"
+                inputMode="decimal"
                 className={pctInput}
                 value={supervision}
-                onChange={(e) => setSupervision(e.target.value)}
+                onChange={(e) => setSupervision(sanitizeNumericInput(e.target.value))}
                 onBlur={() => void saveFinancials()}
               />
               <span className="text-slate-400">% of scope</span>
@@ -276,12 +275,11 @@ export function QuotationDetail(): JSX.Element {
             <span className="flex items-center gap-2 text-slate-600">
               Contingencies
               <input
-                type="number"
-                step="any"
-                min="0"
+                type="text"
+                inputMode="decimal"
                 className={pctInput}
                 value={contingency}
-                onChange={(e) => setContingency(e.target.value)}
+                onChange={(e) => setContingency(sanitizeNumericInput(e.target.value))}
                 onBlur={() => void saveFinancials()}
               />
               <span className="text-slate-400">% of supervision</span>
