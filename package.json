@@ -1,6 +1,6 @@
 {
   "name": "atc-invoicer",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "ATC Ledger — desktop invoicing app for Build With ATC",
   "author": "Build With ATC",
   "private": true,
