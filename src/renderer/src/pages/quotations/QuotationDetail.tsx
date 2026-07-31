@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Button } from '@renderer/components/ui'
 import { Modal } from '@renderer/components/Modal'
 import { FullscreenSpinner } from '@renderer/components/FullscreenSpinner'
-import { formatPeso, toNumber } from '@renderer/lib/format'
+import { formatPeso, formatThousands, sanitizeNumericInput, toNumber } from '@renderer/lib/format'
 import {
   createQuotationItem,
   deleteQuotationItem,
@@ -97,9 +97,10 @@ export function QuotationDetail(): JSX.Element {
   }
 
   function onAmountChange(i: QuotationItem, value: string): void {
-    setAmountDrafts((p) => ({ ...p, [i.id]: value }))
+    const raw = sanitizeNumericInput(value)
+    setAmountDrafts((p) => ({ ...p, [i.id]: raw }))
     // Update live so the totals recompute as you type.
-    setItems((prev) => prev.map((x) => (x.id === i.id ? { ...x, quoted_amount: toNumber(value) } : x)))
+    setItems((prev) => prev.map((x) => (x.id === i.id ? { ...x, quoted_amount: toNumber(raw) } : x)))
   }
 
   async function saveAmount(i: QuotationItem): Promise<void> {
@@ -209,10 +210,9 @@ export function QuotationDetail(): JSX.Element {
                   <div className="flex items-center justify-end gap-1">
                     <span className="text-slate-400">₱</span>
                     <input
-                      type="number"
-                      step="any"
-                      min="0"
-                      value={amountValue(i)}
+                      type="text"
+                      inputMode="decimal"
+                      value={formatThousands(amountValue(i))}
                       onChange={(e) => onAmountChange(i, e.target.value)}
                       onBlur={() => void saveAmount(i)}
                       className="w-32 rounded-lg border border-slate-200 px-2 py-1.5 text-right text-sm tabular-nums outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent/30"
