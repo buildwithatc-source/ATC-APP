@@ -28,6 +28,8 @@ export function QuotationDetail(): JSX.Element {
 
   const [supervision, setSupervision] = useState('0')
   const [contingency, setContingency] = useState('0')
+  // In-progress inline amount edits, keyed by item id.
+  const [amountDrafts, setAmountDrafts] = useState<Record<string, string>>({})
 
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<QuotationItem | null>(null)
@@ -84,6 +86,32 @@ export function QuotationDetail(): JSX.Element {
     for (const name of names) {
       const created = await createQuotationItem(id, { description: name, amount: 0 })
       setItems((prev) => [...prev, created])
+    }
+  }
+
+  // --- Inline amount editing ---
+  function amountValue(i: QuotationItem): string {
+    return amountDrafts[i.id] ?? String(Number(i.quoted_amount))
+  }
+
+  function onAmountChange(i: QuotationItem, value: string): void {
+    setAmountDrafts((p) => ({ ...p, [i.id]: value }))
+    // Update live so the totals recompute as you type.
+    setItems((prev) => prev.map((x) => (x.id === i.id ? { ...x, quoted_amount: toNumber(value) } : x)))
+  }
+
+  async function saveAmount(i: QuotationItem): Promise<void> {
+    if (amountDrafts[i.id] === undefined) return
+    try {
+      await updateQuotationItem(i.id, { description: i.description ?? '', amount: toNumber(amountValue(i)) })
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save amount')
+    } finally {
+      setAmountDrafts((p) => {
+        const n = { ...p }
+        delete n[i.id]
+        return n
+      })
     }
   }
 
@@ -175,8 +203,19 @@ export function QuotationDetail(): JSX.Element {
             {items.map((i) => (
               <tr key={i.id} className="hover:bg-slate-50">
                 <td className="px-4 py-2">{i.description ?? '—'}</td>
-                <td className="px-4 py-2 text-right font-medium tabular-nums">
-                  {formatPeso(Number(i.quoted_amount))}
+                <td className="px-2 py-1.5">
+                  <div className="flex items-center justify-end gap-1">
+                    <span className="text-slate-400">₱</span>
+                    <input
+                      type="number"
+                      step="any"
+                      min="0"
+                      value={amountValue(i)}
+                      onChange={(e) => onAmountChange(i, e.target.value)}
+                      onBlur={() => void saveAmount(i)}
+                      className="w-32 rounded-lg border border-slate-200 px-2 py-1.5 text-right text-sm tabular-nums outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent/30"
+                    />
+                  </div>
                 </td>
                 <td className="px-4 py-2 text-right">
                   <button
@@ -185,6 +224,7 @@ export function QuotationDetail(): JSX.Element {
                       setFormOpen(true)
                     }}
                     className="mr-3 text-brand-accent hover:underline"
+                    title="Rename"
                   >
                     Edit
                   </button>
