@@ -25,6 +25,7 @@ import { getBusiness } from '@renderer/lib/db/business'
 import type { Business, QuotationItem, QuotationItemInput, QuotationWithClient } from '@renderer/lib/types'
 import { QuotationItemFormModal } from './QuotationItemFormModal'
 import { QuickAddMenu } from './QuickAddMenu'
+import { PrintPreview } from '@renderer/components/PrintPreview'
 import { quotationPdfName, renderQuotationHtml, type QuotationSheetData } from './quotationHtml'
 
 export function QuotationDetail(): JSX.Element {
@@ -49,6 +50,7 @@ export function QuotationDetail(): JSX.Element {
   const [pushing, setPushing] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [printing, setPrinting] = useState(false)
+  const [previewOpen, setPreviewOpen] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -245,10 +247,19 @@ export function QuotationDetail(): JSX.Element {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" loading={printing} onClick={() => void printQuote()}>
-            Print
+          <Button
+            variant="ghost"
+            className="border border-slate-300 bg-white"
+            onClick={() => setPreviewOpen(true)}
+          >
+            Preview &amp; Print
           </Button>
-          <Button variant="ghost" loading={exporting} onClick={() => void exportPdf()}>
+          <Button
+            variant="ghost"
+            className="border border-slate-300 bg-white"
+            loading={exporting}
+            onClick={() => void exportPdf()}
+          >
             Export PDF
           </Button>
         </div>
@@ -460,6 +471,16 @@ export function QuotationDetail(): JSX.Element {
           then takes you to the project. The quotation leaves this list.
         </p>
       </Modal>
+
+      <PrintPreview
+        open={previewOpen}
+        html={previewOpen ? renderQuotationHtml(buildSheet()) : ''}
+        printing={printing}
+        exporting={exporting}
+        onClose={() => setPreviewOpen(false)}
+        onPrint={() => void printQuote()}
+        onExport={() => void exportPdf()}
+      />
     </div>
   )
 }

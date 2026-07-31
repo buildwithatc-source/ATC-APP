@@ -6,7 +6,7 @@
     <!-- Lock the renderer down: no remote content, only self + Supabase over https. -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co https://*.supabase.in wss://*.supabase.co; font-src 'self' data:;"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co https://*.supabase.in wss://*.supabase.co; font-src 'self' data:; frame-src 'self';"
     />
     <title>ATC Invoicer</title>
   </head>
