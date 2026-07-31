@@ -1,9 +1,10 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '@renderer/auth/AuthContext'
 import { Button } from './ui'
+import logo from '@renderer/assets/logo.png'
 
 const nav = [
-  { to: '/', label: 'Dashboard', end: true },
+  { to: '/', label: 'Invoices', end: true },
   { to: '/quotations', label: 'Quotations', end: false },
   { to: '/projects', label: 'Projects', end: false },
   { to: '/clients', label: 'Clients', end: false },
@@ -16,11 +17,9 @@ export function AppLayout(): JSX.Element {
   return (
     <div className="flex h-full">
       <aside className="flex w-56 flex-shrink-0 flex-col border-r border-slate-200 bg-white">
-        <div className="flex items-center gap-3 px-5 py-4">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand text-sm font-bold text-white">
-            ATC
-          </div>
-          <span className="font-semibold">Invoicer</span>
+        <div className="flex items-center gap-2 px-5 py-4">
+          <img src={logo} alt="ATC" className="h-8 w-auto object-contain" />
+          <span className="font-semibold">ATC Ledger</span>
         </div>
 
         <nav className="flex-1 space-y-1 px-3 py-2">

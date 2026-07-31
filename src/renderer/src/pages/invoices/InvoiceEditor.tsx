@@ -108,6 +108,11 @@ export function InvoiceEditor(): JSX.Element {
     () => clients.find((c) => c.id === values.client_id) ?? null,
     [clients, values.client_id]
   )
+  // Only show projects for the chosen client (all of them if no client yet).
+  const clientProjects = useMemo(
+    () => (values.client_id ? projects.filter((p) => p.client_id === values.client_id) : projects),
+    [projects, values.client_id]
+  )
 
   const sheet: SheetData = {
     business,
@@ -243,7 +248,7 @@ export function InvoiceEditor(): JSX.Element {
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-6 py-3">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate('/')} className="text-sm text-slate-500 hover:underline">
-            ← Dashboard
+            ← Invoices
           </button>
           <h1 className="text-lg font-semibold">
             {isEdit ? `Invoice ${invoiceNo}` : 'New invoice'}
@@ -284,7 +289,12 @@ export function InvoiceEditor(): JSX.Element {
           <ClientPicker
             clients={clients}
             value={values.client_id || null}
-            onChange={(cid) => setValue('client_id', cid, { shouldValidate: true })}
+            onChange={(cid) => {
+              setValue('client_id', cid, { shouldValidate: true })
+              // Drop the project link if it belongs to a different client.
+              const proj = projects.find((p) => p.id === values.project_id)
+              if (proj && proj.client_id !== cid) setValue('project_id', '')
+            }}
             onClientCreated={(c) => setClients((prev) => [...prev, c].sort((a, b) => a.name.localeCompare(b.name)))}
             error={errors.client_id?.message}
           />
@@ -300,7 +310,7 @@ export function InvoiceEditor(): JSX.Element {
               className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-accent focus:ring-2 focus:ring-brand-accent/30"
             >
               <option value="">— None —</option>
-              {projects.map((p) => (
+              {clientProjects.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.code}
                   {p.name ? ` · ${p.name}` : ''}

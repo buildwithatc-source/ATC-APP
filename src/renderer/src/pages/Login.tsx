@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@renderer/auth/AuthContext'
 import { Button, TextField } from '@renderer/components/ui'
+import logo from '@renderer/assets/logo.png'
 
 const schema = z.object({
   username: z.string().min(1, 'Username or email is required'),
@@ -40,11 +41,9 @@ export function Login(): JSX.Element {
     <div className="flex h-full items-center justify-center bg-slate-100 p-6">
       <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-xl ring-1 ring-slate-200">
         <div className="mb-8 flex flex-col items-center gap-3 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand text-lg font-bold text-white">
-            ATC
-          </div>
+          <img src={logo} alt="ATC Construction" className="h-16 w-auto object-contain" />
           <div>
-            <h1 className="text-xl font-semibold">ATC Invoicer</h1>
+            <h1 className="text-xl font-semibold">ATC Ledger</h1>
             <p className="text-sm text-slate-500">Sign in to continue</p>
           </div>
         </div>

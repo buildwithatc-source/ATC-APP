@@ -12,7 +12,7 @@ function createWindow(): BrowserWindow {
     minHeight: 640,
     show: false,
     autoHideMenuBar: true,
-    title: 'ATC Invoicer',
+    title: 'ATC Ledger',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,

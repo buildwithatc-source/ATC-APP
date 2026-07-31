@@ -1,4 +1,4 @@
-# ATC Invoicer
+# ATC Ledger
 
 Cross-platform desktop invoicing app for **Build With ATC**. Electron + React + TypeScript,
 backed by Supabase (Postgres + Auth). Creates, manages, and exports invoices that match the

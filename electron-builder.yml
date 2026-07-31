@@ -1,5 +1,5 @@
 appId: com.buildwithatc.invoicer
-productName: ATC Invoicer
+productName: ATC Ledger
 copyright: Copyright © 2026 Build With ATC
 
 directories:
@@ -33,7 +33,7 @@ nsis:
   deleteAppDataOnUninstall: false
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: ATC Invoicer
+  shortcutName: ATC Ledger
 
 mac:
   target:

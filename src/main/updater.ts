@@ -36,7 +36,7 @@ async function promptRestart(version: string): Promise<void> {
     defaultId: 0,
     cancelId: 1,
     title: 'Update ready',
-    message: `ATC Invoicer ${version} has been downloaded.`,
+    message: `ATC Ledger ${version} has been downloaded.`,
     detail: 'Restart the app to finish installing the update.'
   })
   if (response === 0) autoUpdater.quitAndInstall()

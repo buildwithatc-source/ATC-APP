@@ -69,7 +69,7 @@ export function Dashboard(): JSX.Element {
     <div className="mx-auto max-w-5xl p-6">
       <div className="mb-5 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Dashboard</h1>
+          <h1 className="text-2xl font-semibold">Invoices</h1>
           <p className="text-sm text-slate-500">Recent invoices</p>
         </div>
         <Button onClick={() => navigate('/invoices/new')}>+ New invoice</Button>

@@ -1,7 +1,7 @@
 {
   "name": "atc-invoicer",
   "version": "0.1.7",
-  "description": "ATC Invoicer — desktop invoicing app for Build With ATC",
+  "description": "ATC Ledger — desktop invoicing app for Build With ATC",
   "author": "Build With ATC",
   "private": true,
   "main": "./out/main/index.js",
