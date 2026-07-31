@@ -3,7 +3,13 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Button } from '@renderer/components/ui'
 import { Modal } from '@renderer/components/Modal'
 import { FullscreenSpinner } from '@renderer/components/FullscreenSpinner'
-import { formatPeso, formatThousands, sanitizeNumericInput, toNumber } from '@renderer/lib/format'
+import {
+  formatAmount2,
+  formatPeso,
+  formatThousands,
+  sanitizeNumericInput,
+  toNumber
+} from '@renderer/lib/format'
 import {
   createQuotationItem,
   deleteQuotationItem,
@@ -90,10 +96,13 @@ export function QuotationDetail(): JSX.Element {
   }
 
   // --- Inline amount editing ---
-  function amountValue(i: QuotationItem): string {
-    if (amountDrafts[i.id] !== undefined) return amountDrafts[i.id]
-    // Show blank (not "0") for an unset amount so it's ready to type into.
-    return Number(i.quoted_amount) === 0 ? '' : String(Number(i.quoted_amount))
+  function amountDisplay(i: QuotationItem): string {
+    const draft = amountDrafts[i.id]
+    // While typing: comma-group the raw draft (no forced decimals).
+    if (draft !== undefined) return formatThousands(draft)
+    // At rest: blank when unset, otherwise 1,000.00.
+    const n = Number(i.quoted_amount)
+    return n === 0 ? '' : formatAmount2(n)
   }
 
   function onAmountChange(i: QuotationItem, value: string): void {
@@ -104,9 +113,10 @@ export function QuotationDetail(): JSX.Element {
   }
 
   async function saveAmount(i: QuotationItem): Promise<void> {
-    if (amountDrafts[i.id] === undefined) return
+    const draft = amountDrafts[i.id]
+    if (draft === undefined) return
     try {
-      await updateQuotationItem(i.id, { description: i.description ?? '', amount: toNumber(amountValue(i)) })
+      await updateQuotationItem(i.id, { description: i.description ?? '', amount: toNumber(draft) })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save amount')
     } finally {
@@ -212,7 +222,7 @@ export function QuotationDetail(): JSX.Element {
                     <input
                       type="text"
                       inputMode="decimal"
-                      value={formatThousands(amountValue(i))}
+                      value={amountDisplay(i)}
                       onChange={(e) => onAmountChange(i, e.target.value)}
                       onBlur={() => void saveAmount(i)}
                       className="w-32 rounded-lg border border-slate-200 px-2 py-1.5 text-right text-sm tabular-nums outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent/30"

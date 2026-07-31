@@ -13,6 +13,12 @@ export function withMarkup(amount: number, markupPercent: number): number {
   return amount * (1 + markupPercent / 100)
 }
 
+/** Format a number as #,##0.00 (commas + always 2 decimals), no currency symbol. */
+export function formatAmount2(value: number): string {
+  const n = Number.isFinite(value) ? value : 0
+  return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
 /** Group a raw numeric string with thousands commas, preserving a partial
  *  decimal being typed (e.g. "1000." -> "1,000.", "1000.5" -> "1,000.5"). */
 export function formatThousands(raw: string): string {
