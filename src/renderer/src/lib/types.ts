@@ -106,11 +106,14 @@ export type Quotation = {
   title: string | null
   supervision_percent: number
   contingency_percent: number
+  notes: string | null
   project_id: string | null
   created_at: string
 }
 
-export type QuotationWithClient = Quotation & { clients: { name: string } | null }
+export type QuotationWithClient = Quotation & {
+  clients: { name: string; address?: string | null } | null
+}
 
 export type QuotationInput = {
   client_id: string | null

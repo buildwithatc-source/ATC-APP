@@ -37,7 +37,7 @@ export async function listOpenQuotations(): Promise<QuotationWithClient[]> {
 export async function getQuotation(id: string): Promise<QuotationWithClient> {
   const { data, error } = await supabase
     .from('quotations')
-    .select('*, clients(name)')
+    .select('*, clients(name, address)')
     .eq('id', id)
     .single()
   if (error) throw new Error(error.message)
@@ -93,6 +93,14 @@ export async function updateQuotationFinancials(
   const { error } = await supabase
     .from('quotations')
     .update({ supervision_percent: supervisionPercent, contingency_percent: contingencyPercent })
+    .eq('id', id)
+  if (error) throw new Error(error.message)
+}
+
+export async function updateQuotationNotes(id: string, notes: string): Promise<void> {
+  const { error } = await supabase
+    .from('quotations')
+    .update({ notes: notes.trim() || null })
     .eq('id', id)
   if (error) throw new Error(error.message)
 }

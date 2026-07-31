@@ -18,11 +18,14 @@ import {
   pushQuotationToProject,
   quotationTotals,
   updateQuotationFinancials,
-  updateQuotationItem
+  updateQuotationItem,
+  updateQuotationNotes
 } from '@renderer/lib/db/quotations'
-import type { QuotationItem, QuotationItemInput, QuotationWithClient } from '@renderer/lib/types'
+import { getBusiness } from '@renderer/lib/db/business'
+import type { Business, QuotationItem, QuotationItemInput, QuotationWithClient } from '@renderer/lib/types'
 import { QuotationItemFormModal } from './QuotationItemFormModal'
 import { QuickAddMenu } from './QuickAddMenu'
+import { quotationPdfName, renderQuotationHtml, type QuotationSheetData } from './quotationHtml'
 
 export function QuotationDetail(): JSX.Element {
   const { id } = useParams<{ id: string }>()
@@ -34,6 +37,8 @@ export function QuotationDetail(): JSX.Element {
 
   const [supervision, setSupervision] = useState('')
   const [contingency, setContingency] = useState('')
+  const [notes, setNotes] = useState('')
+  const [business, setBusiness] = useState<Business | null>(null)
   // In-progress inline amount edits, keyed by item id.
   const [amountDrafts, setAmountDrafts] = useState<Record<string, string>>({})
 
@@ -42,16 +47,24 @@ export function QuotationDetail(): JSX.Element {
   const [deleting, setDeleting] = useState<QuotationItem | null>(null)
   const [pushOpen, setPushOpen] = useState(false)
   const [pushing, setPushing] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const [printing, setPrinting] = useState(false)
 
   useEffect(() => {
     if (!id) return
     ;(async () => {
       try {
-        const [q, its] = await Promise.all([getQuotation(id), listQuotationItems(id)])
+        const [q, its, biz] = await Promise.all([
+          getQuotation(id),
+          listQuotationItems(id),
+          getBusiness()
+        ])
         setQuotation(q)
         setItems(its)
+        setBusiness(biz)
         setSupervision(q.supervision_percent ? String(q.supervision_percent) : '')
         setContingency(q.contingency_percent ? String(q.contingency_percent) : '')
+        setNotes(q.notes ?? '')
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to load quotation')
       } finally {
@@ -64,6 +77,57 @@ export function QuotationDetail(): JSX.Element {
     () => quotationTotals(items, toNumber(supervision), toNumber(contingency)),
     [items, supervision, contingency]
   )
+
+  function buildSheet(): QuotationSheetData {
+    return {
+      business,
+      quotationNo: quotation?.code ?? '',
+      date: quotation?.created_at ?? '',
+      clientName: quotation?.clients?.name ?? '',
+      clientAddress: quotation?.clients?.address ?? '',
+      project: quotation?.title ?? '',
+      items: items.map((i) => ({ description: i.description ?? '', amount: Number(i.quoted_amount) })),
+      scopeSubtotal: totals.scope,
+      supervision: totals.supervision,
+      contingency: totals.contingency,
+      grandTotal: totals.grandTotal,
+      notes
+    }
+  }
+
+  async function exportPdf(): Promise<void> {
+    setError(null)
+    setExporting(true)
+    try {
+      const res = await window.api.pdf.export(
+        renderQuotationHtml(buildSheet()),
+        quotationPdfName(quotation?.code ?? '')
+      )
+      if (!res.ok && !res.canceled && res.error) setError(res.error)
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  async function printQuote(): Promise<void> {
+    setError(null)
+    setPrinting(true)
+    try {
+      const res = await window.api.pdf.print(renderQuotationHtml(buildSheet()))
+      if (!res.ok && res.error) setError(res.error)
+    } finally {
+      setPrinting(false)
+    }
+  }
+
+  async function saveNotes(): Promise<void> {
+    if (!id) return
+    try {
+      await updateQuotationNotes(id, notes)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save notes')
+    }
+  }
 
   async function saveFinancials(): Promise<void> {
     if (!id) return
@@ -173,11 +237,21 @@ export function QuotationDetail(): JSX.Element {
         ← Quotations
       </button>
 
-      <div className="mt-2 mb-5">
-        <h1 className="font-mono text-2xl font-semibold">{quotation.code}</h1>
-        <p className="text-sm text-slate-500">
-          {quotation.title || 'Untitled'} · {quotation.clients?.name ?? 'No client'}
-        </p>
+      <div className="mt-2 mb-5 flex items-start justify-between gap-3">
+        <div>
+          <h1 className="font-mono text-2xl font-semibold">{quotation.code}</h1>
+          <p className="text-sm text-slate-500">
+            {quotation.title || 'Untitled'} · {quotation.clients?.name ?? 'No client'}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" loading={printing} onClick={() => void printQuote()}>
+            Print
+          </Button>
+          <Button variant="ghost" loading={exporting} onClick={() => void exportPdf()}>
+            Export PDF
+          </Button>
+        </div>
       </div>
 
       {error && (
@@ -302,6 +376,19 @@ export function QuotationDetail(): JSX.Element {
             <span className="tabular-nums">{formatPeso(totals.grandTotal)}</span>
           </div>
         </div>
+      </div>
+
+      {/* Notes (prints on the quotation) */}
+      <div className="mt-4">
+        <label className="mb-1 block text-sm font-medium text-slate-700">Notes</label>
+        <textarea
+          rows={2}
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          onBlur={() => void saveNotes()}
+          placeholder="e.g. SCOPE: Demolition, Installation, Painting…"
+          className="w-full resize-y rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-accent focus:ring-2 focus:ring-brand-accent/30"
+        />
       </div>
 
       {/* Push to project */}
