@@ -52,9 +52,11 @@ dmg:
   artifactName: ${name}-${version}-${arch}.${ext}
 
 # Auto-update source (GitHub Releases).
-# releaseType: release -> tagged builds publish immediately (no manual draft step).
+# releaseType: draft -> every platform job aggregates its assets into ONE draft
+# release (reliable for multi-platform CI). A final workflow job publishes the
+# draft. (With releaseType: release, a second job can clear the first's assets.)
 publish:
   provider: github
   owner: buildwithatc-source
   repo: ATC-APP
-  releaseType: release
+  releaseType: draft
