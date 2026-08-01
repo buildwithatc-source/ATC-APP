@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button, TextField } from '@renderer/components/ui'
 import { FullscreenSpinner } from '@renderer/components/FullscreenSpinner'
+import { ConfirmDeleteModal } from '@renderer/components/ConfirmDeleteModal'
 import { listClients } from '@renderer/lib/db/clients'
-import { createQuotation, listOpenQuotations } from '@renderer/lib/db/quotations'
+import { createQuotation, deleteQuotation, listOpenQuotations } from '@renderer/lib/db/quotations'
 import type { Client, QuotationInput, QuotationWithClient } from '@renderer/lib/types'
 import { QuotationFormModal } from './QuotationFormModal'
 
@@ -15,6 +16,8 @@ export function Quotations(): JSX.Element {
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [formOpen, setFormOpen] = useState(false)
+  const [deleting, setDeleting] = useState<QuotationWithClient | null>(null)
+  const [deleteBusy, setDeleteBusy] = useState(false)
 
   useEffect(() => {
     ;(async () => {
@@ -42,6 +45,21 @@ export function Quotations(): JSX.Element {
     const created = await createQuotation(input)
     setFormOpen(false)
     navigate(`/quotations/${created.id}`)
+  }
+
+  async function confirmDelete(): Promise<void> {
+    if (!deleting) return
+    setDeleteBusy(true)
+    setError(null)
+    try {
+      await deleteQuotation(deleting.id)
+      setQuotations((qs) => qs.filter((x) => x.id !== deleting.id))
+      setDeleting(null)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to delete quotation')
+    } finally {
+      setDeleteBusy(false)
+    }
   }
 
   if (loading) return <FullscreenSpinner label="Loading quotations…" />
@@ -75,6 +93,7 @@ export function Quotations(): JSX.Element {
                 <th className="px-4 py-3 font-medium">Number</th>
                 <th className="px-4 py-3 font-medium">Title</th>
                 <th className="px-4 py-3 font-medium">Client</th>
+                <th className="w-16 px-4 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -87,11 +106,22 @@ export function Quotations(): JSX.Element {
                   <td className="px-4 py-3 font-mono font-medium text-slate-900">{x.code}</td>
                   <td className="px-4 py-3 text-slate-700">{x.title || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{x.clients?.name ?? '—'}</td>
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setDeleting(x)
+                      }}
+                      className="text-red-600 hover:underline"
+                    >
+                      Delete
+                    </button>
+                  </td>
                 </tr>
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={3} className="px-4 py-10 text-center text-slate-400">
+                  <td colSpan={4} className="px-4 py-10 text-center text-slate-400">
                     {search ? 'No quotations match your search.' : 'No open quotations.'}
                   </td>
                 </tr>
@@ -107,6 +137,22 @@ export function Quotations(): JSX.Element {
         clients={clients}
         onClose={() => setFormOpen(false)}
         onSubmit={handleCreate}
+      />
+
+      <ConfirmDeleteModal
+        open={deleting !== null}
+        title="Delete quotation"
+        confirmText={deleting?.code ?? ''}
+        busy={deleteBusy}
+        onClose={() => setDeleting(null)}
+        onConfirm={() => void confirmDelete()}
+        description={
+          <>
+            This permanently deletes <span className="font-semibold">{deleting?.code}</span>
+            {deleting?.title ? ` (${deleting.title})` : ''} and all its scope items. This can&apos;t
+            be undone.
+          </>
+        }
       />
     </div>
   )
