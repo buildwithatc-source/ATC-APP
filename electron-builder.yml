@@ -34,6 +34,9 @@ nsis:
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: ATC Ledger
+  # Space-free filename so the on-disk file, latest.yml, and the uploaded asset
+  # name all match exactly (no sanitization mismatch for the auto-updater).
+  artifactName: ATC-Ledger-Setup-${version}.${ext}
 
 mac:
   target:
@@ -47,9 +50,10 @@ mac:
         - x64
   category: public.app-category.business
   icon: build/icon.png # electron-builder converts to .icns
+  artifactName: ATC-Ledger-${version}-${arch}-mac.${ext}
 
 dmg:
-  artifactName: ${name}-${version}-${arch}.${ext}
+  artifactName: ATC-Ledger-${version}-${arch}.${ext}
 
 # Auto-update source (GitHub Releases).
 # releaseType: draft -> every platform job aggregates its assets into ONE draft

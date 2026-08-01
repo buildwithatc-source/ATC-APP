@@ -2,6 +2,11 @@ name: Release
 
 # Build and publish installers to GitHub Releases when a version tag is pushed.
 # Cut a release with:  npm version patch && git push --follow-tags
+#
+# Each platform builds its installer WITHOUT publishing and uploads the files as
+# CI artifacts. A single final job then creates the GitHub Release with all
+# files at once. This avoids the multi-job clobbering you get when two
+# electron-builder jobs publish to the same release concurrently.
 on:
   push:
     tags:
@@ -11,12 +16,9 @@ permissions:
   contents: write
 
 jobs:
-  release:
+  build:
     strategy:
       fail-fast: false
-      # Publish one platform at a time — concurrent publishes to the same
-      # GitHub Release can race and drop assets (e.g. latest.yml / the exe).
-      max-parallel: 1
       matrix:
         include:
           - os: windows-latest
@@ -45,21 +47,38 @@ jobs:
       - name: Build renderer/main/preload
         run: npm run build
 
-      - name: Build & publish installer
-        run: npx electron-builder ${{ matrix.target }} --publish always --config electron-builder.yml
+      - name: Build installer (no publish)
+        run: npx electron-builder ${{ matrix.target }} --publish never --config electron-builder.yml
         env:
-          # electron-builder uploads to GitHub Releases with this token.
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # Both platforms aggregate their assets into one DRAFT release; publish it once
-  # everything is uploaded so the release is always complete.
+      - name: Upload installer artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.os }}
+          if-no-files-found: error
+          path: |
+            release/**/*.exe
+            release/**/*.exe.blockmap
+            release/**/*.dmg
+            release/**/*.dmg.blockmap
+            release/**/*.zip
+            release/**/*.zip.blockmap
+            release/**/latest*.yml
+
   publish:
-    needs: release
+    needs: build
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - name: Publish the draft release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release edit "${{ github.ref_name }}" --repo "${{ github.repository }}" --draft=false --latest
+      - name: Download all installer artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Create GitHub Release with all assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/**/*
+          fail_on_unmatched_files: true
