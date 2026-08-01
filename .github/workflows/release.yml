@@ -57,14 +57,16 @@ jobs:
         with:
           name: dist-${{ matrix.os }}
           if-no-files-found: error
+          # Single-level (release/<version>/*) so we grab the installers only,
+          # not the raw exe inside win-unpacked/.
           path: |
-            release/**/*.exe
-            release/**/*.exe.blockmap
-            release/**/*.dmg
-            release/**/*.dmg.blockmap
-            release/**/*.zip
-            release/**/*.zip.blockmap
-            release/**/latest*.yml
+            release/*/*.exe
+            release/*/*.exe.blockmap
+            release/*/*.dmg
+            release/*/*.dmg.blockmap
+            release/*/*.zip
+            release/*/*.zip.blockmap
+            release/*/latest*.yml
 
   publish:
     needs: build
