@@ -39,7 +39,8 @@ async function promptRestart(version: string): Promise<void> {
     message: `ATC Ledger ${version} has been downloaded.`,
     detail: 'Restart the app to finish installing the update.'
   })
-  if (response === 0) autoUpdater.quitAndInstall()
+  // (true, true) = install silently (no NSIS wizard) and relaunch the app.
+  if (response === 0) autoUpdater.quitAndInstall(true, true)
 }
 
 export function initUpdater(browserWindow: BrowserWindow): void {
@@ -75,6 +76,7 @@ export function registerUpdaterIpc(ipcMain: IpcMain): void {
   })
 
   ipcMain.handle('updates:install', () => {
-    if (app.isPackaged) autoUpdater.quitAndInstall()
+    // Silent in-place install + relaunch (no NSIS wizard).
+    if (app.isPackaged) autoUpdater.quitAndInstall(true, true)
   })
 }
