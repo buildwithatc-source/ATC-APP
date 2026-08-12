@@ -17,6 +17,10 @@ export const supabase = createClient(url, anonKey, {
     persistSession: true,
     autoRefreshToken: true,
     // No browser URL to parse in Electron.
-    detectSessionInUrl: false
+    detectSessionInUrl: false,
+    // Single-window app: bypass supabase-js's Web Locks (navigator.locks)
+    // coordination, which can stall getSession() for ~30s on startup in
+    // Electron. No concurrent tabs here, so just run the callback directly.
+    lock: async (_name, _acquireTimeout, fn) => fn()
   }
 })
