@@ -64,6 +64,8 @@ export type Expense = {
   expense_date: string
   invoiced: boolean
   invoice_id: string | null
+  /** Optional Google Drive (or any) link to a photo/receipt for this expense. */
+  image_url: string | null
   created_at: string
 }
 

@@ -9,6 +9,7 @@ import {
   createExpense,
   deleteExpense,
   listExpenses,
+  setExpenseImage,
   setExpensesInvoiced,
   updateExpense
 } from '@renderer/lib/db/expenses'
@@ -20,6 +21,7 @@ import type {
   ProjectWithClient
 } from '@renderer/lib/types'
 import { ExpenseFormModal } from './ExpenseFormModal'
+import { ExpenseImageButton } from './ExpenseImageButton'
 import { BudgetTab } from './BudgetTab'
 import { ContractBudgetTab } from './ContractBudgetTab'
 
@@ -97,6 +99,11 @@ export function ProjectDetail(): JSX.Element {
     } catch {
       setExpenses((prev) => prev.map((e) => (e.id === exp.id ? { ...e, invoiced: exp.invoiced } : e)))
     }
+  }
+
+  async function changeImage(exp: Expense, imageUrl: string | null): Promise<void> {
+    await setExpenseImage(exp.id, imageUrl)
+    setExpenses((prev) => prev.map((e) => (e.id === exp.id ? { ...e, image_url: imageUrl } : e)))
   }
 
   async function confirmDelete(): Promise<void> {
@@ -208,6 +215,7 @@ export function ProjectDetail(): JSX.Element {
                 <tr>
                   <th className="px-4 py-3 font-medium">Date</th>
                   <th className="px-4 py-3 font-medium">Description</th>
+                  <th className="w-12 px-4 py-3 text-center font-medium">Image</th>
                   <th className="px-4 py-3 font-medium">Category</th>
                   <th className="px-4 py-3 text-right font-medium">Cost</th>
                   <th className="px-4 py-3 font-medium">Billed</th>
@@ -219,6 +227,12 @@ export function ProjectDetail(): JSX.Element {
                   <tr key={e.id} className="hover:bg-slate-50">
                     <td className="px-4 py-3 text-slate-600">{formatTemplateDate(e.expense_date)}</td>
                     <td className="px-4 py-3">{e.description ?? '—'}</td>
+                    <td className="px-4 py-3 text-center">
+                      <ExpenseImageButton
+                        imageUrl={e.image_url}
+                        onChange={(url) => changeImage(e, url)}
+                      />
+                    </td>
                     <td className="px-4 py-3 text-slate-500">{catName(e.category_id)}</td>
                     <td className="px-4 py-3 text-right tabular-nums">{formatPeso(Number(e.amount))}</td>
                     <td className="px-4 py-3">
@@ -252,7 +266,7 @@ export function ProjectDetail(): JSX.Element {
                 ))}
                 {expenses.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-10 text-center text-slate-400">
+                    <td colSpan={7} className="px-4 py-10 text-center text-slate-400">
                       No expenses yet. Add your first one.
                     </td>
                   </tr>

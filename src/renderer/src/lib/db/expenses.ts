@@ -61,6 +61,12 @@ export async function deleteExpense(id: string): Promise<void> {
   if (error) throw new Error(error.message)
 }
 
+/** Attach (or clear, with null) the image link for an expense. */
+export async function setExpenseImage(id: string, imageUrl: string | null): Promise<void> {
+  const { error } = await supabase.from('expenses').update({ image_url: imageUrl }).eq('id', id)
+  if (error) throw new Error(error.message)
+}
+
 /** Total expense cost per project id, across all projects. */
 export async function getExpenseTotalsByProject(): Promise<Record<string, number>> {
   const { data, error } = await supabase.from('expenses').select('project_id, amount')
