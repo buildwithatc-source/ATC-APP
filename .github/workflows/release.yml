@@ -40,9 +40,14 @@ jobs:
 
       - name: Create .env (Supabase build-time config)
         shell: bash
+        # These are the PUBLIC client credentials (project URL + publishable/anon
+        # key). They ship inside every installer already and are safe to expose
+        # while RLS is on. Hardcoded here so a missing repo secret can't silently
+        # ship an app with empty config (which blank-screens on launch). A repo
+        # secret, if set, still overrides.
         run: |
-          echo "VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}" > .env
-          echo "VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}" >> .env
+          echo "VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL || 'https://wsupsihybxzlmlezvape.supabase.co' }}" > .env
+          echo "VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY || 'sb_publishable_oFltZ1ncn_AbGnxJqWwHWQ_1k1dNFYW' }}" >> .env
 
       - name: Build renderer/main/preload
         run: npm run build
