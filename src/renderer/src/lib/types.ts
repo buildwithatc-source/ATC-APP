@@ -97,6 +97,9 @@ export type ScopeItemLike = {
   negotiated_amount: number
 }
 
+/** Quotations share the same status vocabulary as projects. */
+export type QuotationStatus = ProjectStatus
+
 export type Quotation = {
   id: string
   code: string
@@ -107,6 +110,7 @@ export type Quotation = {
   supervision_percent: number
   contingency_percent: number
   notes: string | null
+  status: QuotationStatus
   project_id: string | null
   created_at: string
 }

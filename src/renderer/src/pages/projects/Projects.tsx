@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Button, TextField } from '@renderer/components/ui'
 import { FullscreenSpinner } from '@renderer/components/FullscreenSpinner'
 import { ConfirmDeleteModal } from '@renderer/components/ConfirmDeleteModal'
+import { StatusTabs } from '@renderer/components/StatusTabs'
 import { listClients } from '@renderer/lib/db/clients'
 import {
   createProject,
@@ -16,6 +17,12 @@ import type { Client, ProjectInput, ProjectStatus, ProjectWithClient } from '@re
 import { ProjectFormModal } from './ProjectFormModal'
 import { ProjectStatusSelect } from './ProjectStatusSelect'
 
+const TABS: { value: ProjectStatus; label: string }[] = [
+  { value: 'active', label: 'Active' },
+  { value: 'archived', label: 'Archived' },
+  { value: 'complete', label: 'Complete' }
+]
+
 export function Projects(): JSX.Element {
   const navigate = useNavigate()
   const [projects, setProjects] = useState<ProjectWithClient[]>([])
@@ -24,6 +31,7 @@ export function Projects(): JSX.Element {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  const [tab, setTab] = useState<ProjectStatus>('active')
   const [formOpen, setFormOpen] = useState(false)
   const [statusBusy, setStatusBusy] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<ProjectWithClient | null>(null)
@@ -48,13 +56,21 @@ export function Projects(): JSX.Element {
     })()
   }, [])
 
+  const counts = useMemo(() => {
+    const c: Record<ProjectStatus, number> = { active: 0, complete: 0, archived: 0 }
+    for (const p of projects) c[p.status]++
+    return c
+  }, [projects])
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    if (!q) return projects
-    return projects.filter((p) =>
-      `${p.code} ${p.name ?? ''} ${p.clients?.name ?? ''}`.toLowerCase().includes(q)
-    )
-  }, [projects, search])
+    return projects
+      .filter((p) => p.status === tab)
+      .filter(
+        (p) =>
+          !q || `${p.code} ${p.name ?? ''} ${p.clients?.name ?? ''}`.toLowerCase().includes(q)
+      )
+  }, [projects, search, tab])
 
   async function handleCreate(input: ProjectInput): Promise<void> {
     const created = await createProject(input)
@@ -108,13 +124,16 @@ export function Projects(): JSX.Element {
         <Button onClick={() => setFormOpen(true)}>+ New project</Button>
       </div>
 
-      <div className="mb-4">
-        <TextField
-          label=""
-          placeholder="Search by project or client…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <StatusTabs tabs={TABS} value={tab} counts={counts} onChange={setTab} />
+        <div className="min-w-[16rem] flex-1">
+          <TextField
+            label=""
+            placeholder="Search by project or client…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
       </div>
 
       {error && (
@@ -177,7 +196,7 @@ export function Projects(): JSX.Element {
             {filtered.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-10 text-center text-slate-400">
-                  {search ? 'No projects match your search.' : 'No projects yet.'}
+                  {search ? 'No projects match your search.' : `No ${tab} projects.`}
                 </td>
               </tr>
             )}

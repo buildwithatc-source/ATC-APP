@@ -3,10 +3,28 @@ import { useNavigate } from 'react-router-dom'
 import { Button, TextField } from '@renderer/components/ui'
 import { FullscreenSpinner } from '@renderer/components/FullscreenSpinner'
 import { ConfirmDeleteModal } from '@renderer/components/ConfirmDeleteModal'
+import { StatusTabs } from '@renderer/components/StatusTabs'
 import { listClients } from '@renderer/lib/db/clients'
-import { createQuotation, deleteQuotation, listOpenQuotations } from '@renderer/lib/db/quotations'
-import type { Client, QuotationInput, QuotationWithClient } from '@renderer/lib/types'
+import {
+  createQuotation,
+  deleteQuotation,
+  listQuotations,
+  setQuotationStatus
+} from '@renderer/lib/db/quotations'
+import type {
+  Client,
+  QuotationInput,
+  QuotationStatus,
+  QuotationWithClient
+} from '@renderer/lib/types'
 import { QuotationFormModal } from './QuotationFormModal'
+import { QuotationStatusSelect } from './QuotationStatusSelect'
+
+const TABS: { value: QuotationStatus; label: string }[] = [
+  { value: 'active', label: 'Active' },
+  { value: 'archived', label: 'Archived' },
+  { value: 'complete', label: 'Complete' }
+]
 
 export function Quotations(): JSX.Element {
   const navigate = useNavigate()
@@ -15,14 +33,16 @@ export function Quotations(): JSX.Element {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  const [tab, setTab] = useState<QuotationStatus>('active')
   const [formOpen, setFormOpen] = useState(false)
+  const [statusBusy, setStatusBusy] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<QuotationWithClient | null>(null)
   const [deleteBusy, setDeleteBusy] = useState(false)
 
   useEffect(() => {
     ;(async () => {
       try {
-        const [qs, cl] = await Promise.all([listOpenQuotations(), listClients()])
+        const [qs, cl] = await Promise.all([listQuotations(), listClients()])
         setQuotations(qs)
         setClients(cl)
       } catch (e) {
@@ -33,18 +53,39 @@ export function Quotations(): JSX.Element {
     })()
   }, [])
 
+  const counts = useMemo(() => {
+    const c: Record<QuotationStatus, number> = { active: 0, complete: 0, archived: 0 }
+    for (const q of quotations) c[q.status]++
+    return c
+  }, [quotations])
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    if (!q) return quotations
-    return quotations.filter((x) =>
-      `${x.code} ${x.title ?? ''} ${x.clients?.name ?? ''}`.toLowerCase().includes(q)
-    )
-  }, [quotations, search])
+    return quotations
+      .filter((x) => x.status === tab)
+      .filter(
+        (x) =>
+          !q || `${x.code} ${x.title ?? ''} ${x.clients?.name ?? ''}`.toLowerCase().includes(q)
+      )
+  }, [quotations, search, tab])
 
   async function handleCreate(input: QuotationInput): Promise<void> {
     const created = await createQuotation(input)
     setFormOpen(false)
     navigate(`/quotations/${created.id}`)
+  }
+
+  async function changeStatus(x: QuotationWithClient, status: QuotationStatus): Promise<void> {
+    const prev = x.status
+    setStatusBusy(x.id)
+    setQuotations((qs) => qs.map((q) => (q.id === x.id ? { ...q, status } : q)))
+    try {
+      await setQuotationStatus(x.id, status)
+    } catch {
+      setQuotations((qs) => qs.map((q) => (q.id === x.id ? { ...q, status: prev } : q)))
+    } finally {
+      setStatusBusy(null)
+    }
   }
 
   async function confirmDelete(): Promise<void> {
@@ -69,18 +110,21 @@ export function Quotations(): JSX.Element {
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Quotations</h1>
-          <p className="text-sm text-slate-500">{quotations.length} open</p>
+          <p className="text-sm text-slate-500">{quotations.length} total</p>
         </div>
         <Button onClick={() => setFormOpen(true)}>+ New quotation</Button>
       </div>
 
-      <div className="mb-4">
-        <TextField
-          label=""
-          placeholder="Search by number, title, or client…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <StatusTabs tabs={TABS} value={tab} counts={counts} onChange={setTab} />
+        <div className="min-w-[16rem] flex-1">
+          <TextField
+            label=""
+            placeholder="Search by number, title, or client…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
       </div>
 
       {error ? (
@@ -93,6 +137,7 @@ export function Quotations(): JSX.Element {
                 <th className="px-4 py-3 font-medium">Number</th>
                 <th className="px-4 py-3 font-medium">Title</th>
                 <th className="px-4 py-3 font-medium">Client</th>
+                <th className="px-4 py-3 font-medium">Status</th>
                 <th className="w-16 px-4 py-3" />
               </tr>
             </thead>
@@ -106,6 +151,13 @@ export function Quotations(): JSX.Element {
                   <td className="px-4 py-3 font-mono font-medium text-slate-900">{x.code}</td>
                   <td className="px-4 py-3 text-slate-700">{x.title || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{x.clients?.name ?? '—'}</td>
+                  <td className="px-4 py-3">
+                    <QuotationStatusSelect
+                      value={x.status}
+                      busy={statusBusy === x.id}
+                      onChange={(s) => void changeStatus(x, s)}
+                    />
+                  </td>
                   <td className="px-4 py-3 text-right">
                     <button
                       onClick={(e) => {
@@ -121,8 +173,10 @@ export function Quotations(): JSX.Element {
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-10 text-center text-slate-400">
-                    {search ? 'No quotations match your search.' : 'No open quotations.'}
+                  <td colSpan={5} className="px-4 py-10 text-center text-slate-400">
+                    {search
+                      ? 'No quotations match your search.'
+                      : `No ${tab} quotations.`}
                   </td>
                 </tr>
               )}

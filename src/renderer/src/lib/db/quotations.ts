@@ -23,12 +23,11 @@ export function quotationTotals(
   return { scope, supervision, contingency, grandTotal: scope + supervision + contingency }
 }
 
-/** Open quotations only (not yet pushed to a project). */
-export async function listOpenQuotations(): Promise<QuotationWithClient[]> {
+/** All quotations (filtered by status tab in the UI). */
+export async function listQuotations(): Promise<QuotationWithClient[]> {
   const { data, error } = await supabase
     .from('quotations')
     .select('*, clients(name)')
-    .is('project_id', null)
     .order('created_at', { ascending: false })
   if (error) throw new Error(error.message)
   return (data ?? []) as QuotationWithClient[]
@@ -102,6 +101,14 @@ export async function updateQuotationNotes(id: string, notes: string): Promise<v
     .from('quotations')
     .update({ notes: notes.trim() || null })
     .eq('id', id)
+  if (error) throw new Error(error.message)
+}
+
+export async function setQuotationStatus(
+  id: string,
+  status: Quotation['status']
+): Promise<void> {
+  const { error } = await supabase.from('quotations').update({ status }).eq('id', id)
   if (error) throw new Error(error.message)
 }
 
@@ -229,10 +236,10 @@ export async function pushQuotationToProject(
     .eq('id', project.id)
   if (pErr) throw new Error(pErr.message)
 
-  // Link + hide from the open quotation list.
+  // Link + mark complete (moves it to the Complete tab).
   const { error: qErr } = await supabase
     .from('quotations')
-    .update({ project_id: project.id })
+    .update({ project_id: project.id, status: 'complete' })
     .eq('id', quotation.id)
   if (qErr) throw new Error(qErr.message)
 
