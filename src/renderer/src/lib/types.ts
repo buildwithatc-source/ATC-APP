@@ -83,6 +83,8 @@ export type Expense = {
   image_url: string | null
   /** Optional supplier this expense was purchased from. */
   supplier_id: string | null
+  /** Optional free-text payment method (Cash, GCash, Bank transfer, …). */
+  paid_via: string | null
   created_at: string
 }
 
@@ -92,6 +94,8 @@ export type ExpenseInput = {
   description: string
   amount: number
   expense_date: string
+  paid_via: string | null
+  image_url: string | null
 }
 
 export type ContractItem = {
@@ -158,6 +162,13 @@ export type QuotationItem = {
 export type QuotationItemInput = {
   description: string
   amount: number
+}
+
+/** A reusable payment method (presets + custom), chosen for an expense's paid_via. */
+export type PaymentMethod = {
+  id: string
+  name: string
+  created_at: string
 }
 
 export type ScopeTemplate = {

@@ -4,8 +4,13 @@ import { Button } from '@renderer/components/ui'
 import { Modal } from '@renderer/components/Modal'
 import { FullscreenSpinner } from '@renderer/components/FullscreenSpinner'
 import { getProject } from '@renderer/lib/db/projects'
-import { createBudgetCategory, listBudgetCategories } from '@renderer/lib/db/budget'
+import {
+  createBudgetCategory,
+  deleteBudgetCategory,
+  listBudgetCategories
+} from '@renderer/lib/db/budget'
 import { createSupplier, listSuppliers } from '@renderer/lib/db/suppliers'
+import { createPaymentMethod, listPaymentMethods } from '@renderer/lib/db/paymentMethods'
 import {
   createExpense,
   deleteExpense,
@@ -42,6 +47,7 @@ export function ProjectDetail(): JSX.Element {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [categories, setCategories] = useState<BudgetCategory[]>([])
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
+  const [paymentMethods, setPaymentMethods] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [tab, setTab] = useState<Tab>('expenses')
@@ -54,16 +60,18 @@ export function ProjectDetail(): JSX.Element {
     if (!id) return
     ;(async () => {
       try {
-        const [pr, ex, cats, sups] = await Promise.all([
+        const [pr, ex, cats, sups, pms] = await Promise.all([
           getProject(id),
           listExpenses(id),
           listBudgetCategories(id),
-          listSuppliers()
+          listSuppliers(),
+          listPaymentMethods()
         ])
         setProject(pr)
         setExpenses(ex)
         setCategories(cats)
         setSuppliers(sups)
+        setPaymentMethods(pms.map((m) => m.name))
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to load project')
       } finally {
@@ -90,6 +98,15 @@ export function ProjectDetail(): JSX.Element {
     return { id: created.id, name: created.name }
   }
 
+  /** Delete a budget category from the expense form (its expenses go uncategorized). */
+  async function deleteCategoryInline(categoryId: string): Promise<void> {
+    await deleteBudgetCategory(categoryId)
+    setCategories((prev) => prev.filter((c) => c.id !== categoryId))
+    setExpenses((prev) =>
+      prev.map((e) => (e.category_id === categoryId ? { ...e, category_id: null } : e))
+    )
+  }
+
   /** Add a supplier from the expense form (also appears on the Contacts page). */
   async function createSupplierInline(name: string): Promise<{ id: string; name: string }> {
     const created = await createSupplier({ name, address: null, contact_number: null })
@@ -97,6 +114,17 @@ export function ProjectDetail(): JSX.Element {
       [...prev, created].sort((a, b) => a.name.localeCompare(b.name))
     )
     return { id: created.id, name: created.name }
+  }
+
+  /** Add a payment method from the expense form (persisted for reuse). */
+  async function createPaymentMethodInline(name: string): Promise<{ id: string; name: string }> {
+    const created = await createPaymentMethod(name)
+    setPaymentMethods((prev) =>
+      prev.some((n) => n.toLowerCase() === created.name.toLowerCase())
+        ? prev
+        : [...prev, created.name].sort((a, b) => a.localeCompare(b))
+    )
+    return { id: created.name, name: created.name }
   }
 
   const totals = useMemo(() => {
@@ -160,7 +188,7 @@ export function ProjectDetail(): JSX.Element {
     )
 
   return (
-    <div className="mx-auto max-w-4xl p-6">
+    <div className="mx-auto max-w-6xl p-6">
       <button onClick={() => navigate('/projects')} className="text-sm text-slate-500 hover:underline">
         ← Projects
       </button>
@@ -245,6 +273,7 @@ export function ProjectDetail(): JSX.Element {
                   <th className="w-12 px-4 py-3 text-center font-medium">Image</th>
                   <th className="px-4 py-3 font-medium">Category</th>
                   <th className="px-4 py-3 font-medium">Supplier</th>
+                  <th className="px-4 py-3 font-medium">Mode of payment</th>
                   <th className="px-4 py-3 text-right font-medium">Cost</th>
                   <th className="px-4 py-3 font-medium">Billed</th>
                   <th className="w-20 px-4 py-3" />
@@ -263,6 +292,7 @@ export function ProjectDetail(): JSX.Element {
                     </td>
                     <td className="px-4 py-3 text-slate-500">{catName(e.category_id)}</td>
                     <td className="px-4 py-3 text-slate-500">{supplierName(e.supplier_id)}</td>
+                    <td className="px-4 py-3 text-slate-500">{e.paid_via || '—'}</td>
                     <td className="px-4 py-3 text-right tabular-nums">{formatPeso(Number(e.amount))}</td>
                     <td className="px-4 py-3">
                       <button
@@ -295,7 +325,7 @@ export function ProjectDetail(): JSX.Element {
                 ))}
                 {expenses.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="px-4 py-10 text-center text-slate-400">
+                    <td colSpan={9} className="px-4 py-10 text-center text-slate-400">
                       No expenses yet. Add your first one.
                     </td>
                   </tr>
@@ -312,7 +342,10 @@ export function ProjectDetail(): JSX.Element {
         categories={categories}
         suppliers={suppliers}
         onCreateCategory={createCategoryInline}
+        onDeleteCategory={deleteCategoryInline}
         onCreateSupplier={createSupplierInline}
+        paymentMethods={paymentMethods}
+        onCreatePaymentMethod={createPaymentMethodInline}
         onClose={() => {
           setFormOpen(false)
           setEditing(null)

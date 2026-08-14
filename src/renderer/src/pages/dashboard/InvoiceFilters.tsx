@@ -45,18 +45,6 @@ export function InvoiceFilters({ value, clients, onChange }: Props): JSX.Element
         ))}
       </select>
 
-      <select
-        className={control}
-        value={value.status}
-        onChange={(e) => set({ status: e.target.value as InvoiceStatus | '' })}
-      >
-        <option value="">All statuses</option>
-        <option value="draft">Draft</option>
-        <option value="sent">Sent</option>
-        <option value="paid">Paid</option>
-        <option value="void">Void</option>
-      </select>
-
       <label className="flex items-center gap-1 text-xs text-slate-500">
         From
         <input

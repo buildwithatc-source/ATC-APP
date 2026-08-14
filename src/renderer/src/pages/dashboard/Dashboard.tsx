@@ -1,14 +1,26 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@renderer/components/ui'
+import { Modal } from '@renderer/components/Modal'
 import { FullscreenSpinner } from '@renderer/components/FullscreenSpinner'
+import { StatusTabs } from '@renderer/components/StatusTabs'
 import { listClients } from '@renderer/lib/db/clients'
-import { listInvoices, setInvoiceStatus } from '@renderer/lib/db/invoices'
+import { deleteInvoice, listInvoices, setInvoiceStatus } from '@renderer/lib/db/invoices'
 import { formatPeso, formatTemplateDate } from '@renderer/lib/format'
 import type { Client, InvoiceListRow, InvoiceStatus } from '@renderer/lib/types'
 import { StatTiles } from './StatTiles'
 import { InvoiceFilters, emptyFilters, type Filters } from './InvoiceFilters'
 import { InlineStatusSelect } from './InlineStatusSelect'
+
+type StatusTab = 'all' | InvoiceStatus
+
+const STATUS_TABS: { value: StatusTab; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'draft', label: 'Draft' },
+  { value: 'sent', label: 'Sent' },
+  { value: 'paid', label: 'Paid' },
+  { value: 'void', label: 'Void' }
+]
 
 export function Dashboard(): JSX.Element {
   const navigate = useNavigate()
@@ -18,6 +30,9 @@ export function Dashboard(): JSX.Element {
   const [error, setError] = useState<string | null>(null)
   const [filters, setFilters] = useState<Filters>(emptyFilters)
   const [statusBusy, setStatusBusy] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState<InvoiceListRow | null>(null)
+  const [deleteBusy, setDeleteBusy] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   useEffect(() => {
     ;(async () => {
@@ -33,11 +48,12 @@ export function Dashboard(): JSX.Element {
     })()
   }, [])
 
-  const filtered = useMemo(() => {
+  // Rows matching everything EXCEPT the status tab (so tab counts reflect the
+  // other active filters).
+  const baseFiltered = useMemo(() => {
     const q = filters.search.trim().toLowerCase()
     return rows.filter((r) => {
       if (filters.clientId && r.client_id !== filters.clientId) return false
-      if (filters.status && r.status !== filters.status) return false
       if (filters.from && r.invoice_date < filters.from) return false
       if (filters.to && r.invoice_date > filters.to) return false
       if (q) {
@@ -46,7 +62,26 @@ export function Dashboard(): JSX.Element {
       }
       return true
     })
-  }, [rows, filters])
+  }, [rows, filters.search, filters.clientId, filters.from, filters.to])
+
+  const counts = useMemo(() => {
+    const c: Record<StatusTab, number> = {
+      all: baseFiltered.length,
+      draft: 0,
+      sent: 0,
+      paid: 0,
+      void: 0
+    }
+    for (const r of baseFiltered) c[r.status]++
+    return c
+  }, [baseFiltered])
+
+  const filtered = useMemo(
+    () => (filters.status ? baseFiltered.filter((r) => r.status === filters.status) : baseFiltered),
+    [baseFiltered, filters.status]
+  )
+
+  const activeTab: StatusTab = filters.status === '' ? 'all' : filters.status
 
   async function changeStatus(row: InvoiceListRow, status: InvoiceStatus): Promise<void> {
     const prev = row.status
@@ -60,6 +95,21 @@ export function Dashboard(): JSX.Element {
       setRows((rs) => rs.map((r) => (r.id === row.id ? { ...r, status: prev } : r)))
     } finally {
       setStatusBusy(null)
+    }
+  }
+
+  async function confirmDelete(): Promise<void> {
+    if (!deleting) return
+    setDeleteBusy(true)
+    setDeleteError(null)
+    try {
+      await deleteInvoice(deleting.id)
+      setRows((rs) => rs.filter((r) => r.id !== deleting.id))
+      setDeleting(null)
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : 'Failed to delete invoice')
+    } finally {
+      setDeleteBusy(false)
     }
   }
 
@@ -82,6 +132,17 @@ export function Dashboard(): JSX.Element {
           <StatTiles rows={filtered} />
 
           <div className="mt-5 mb-3">
+            <StatusTabs
+              tabs={STATUS_TABS}
+              value={activeTab}
+              counts={counts}
+              onChange={(v) =>
+                setFilters((f) => ({ ...f, status: v === 'all' ? '' : (v as InvoiceStatus) }))
+              }
+            />
+          </div>
+
+          <div className="mb-3">
             <InvoiceFilters value={filters} clients={clients} onChange={setFilters} />
           </div>
 
@@ -95,6 +156,7 @@ export function Dashboard(): JSX.Element {
                   <th className="px-4 py-3 font-medium">Due</th>
                   <th className="px-4 py-3 font-medium">Status</th>
                   <th className="px-4 py-3 text-right font-medium">Total</th>
+                  <th className="w-16 px-4 py-3" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -118,11 +180,23 @@ export function Dashboard(): JSX.Element {
                       />
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums">{formatPeso(Number(r.total))}</td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setDeleteError(null)
+                          setDeleting(r)
+                        }}
+                        className="text-red-600 hover:underline"
+                      >
+                        Delete
+                      </button>
+                    </td>
                   </tr>
                 ))}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-10 text-center text-slate-400">
+                    <td colSpan={7} className="px-4 py-10 text-center text-slate-400">
                       {rows.length === 0
                         ? 'No invoices yet. Create your first one.'
                         : 'No invoices match your filters.'}
@@ -134,6 +208,39 @@ export function Dashboard(): JSX.Element {
           </div>
         </>
       )}
+
+      <Modal
+        open={deleting !== null}
+        title="Delete invoice"
+        onClose={() => setDeleting(null)}
+        footer={
+          <>
+            <Button variant="ghost" type="button" onClick={() => setDeleting(null)}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              loading={deleteBusy}
+              className="bg-red-600 hover:bg-red-700"
+              onClick={() => void confirmDelete()}
+            >
+              Delete
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-slate-600">
+          Delete invoice <span className="font-mono font-semibold text-slate-900">{deleting?.invoice_no}</span>
+          {deleting?.clients?.name ? ` for ${deleting.clients.name}` : ''} (
+          {formatPeso(Number(deleting?.total ?? 0))})? This can&apos;t be undone. Any expenses it
+          billed will be freed for re-invoicing.
+        </p>
+        {deleteError && (
+          <div className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700 ring-1 ring-red-200">
+            {deleteError}
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }

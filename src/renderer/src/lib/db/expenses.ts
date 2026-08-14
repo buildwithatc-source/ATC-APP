@@ -33,7 +33,9 @@ export async function createExpense(projectId: string, input: ExpenseInput): Pro
       supplier_id: input.supplier_id || null,
       description: input.description.trim() || null,
       amount: input.amount,
-      expense_date: input.expense_date
+      expense_date: input.expense_date,
+      paid_via: input.paid_via?.trim() || null,
+      image_url: input.image_url?.trim() || null
     })
     .select('*')
     .single()
@@ -49,7 +51,9 @@ export async function updateExpense(id: string, input: ExpenseInput): Promise<Ex
       supplier_id: input.supplier_id || null,
       description: input.description.trim() || null,
       amount: input.amount,
-      expense_date: input.expense_date
+      expense_date: input.expense_date,
+      paid_via: input.paid_via?.trim() || null,
+      image_url: input.image_url?.trim() || null
     })
     .eq('id', id)
     .select('*')

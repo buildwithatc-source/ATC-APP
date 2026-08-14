@@ -64,6 +64,22 @@ export async function setInvoiceStatus(id: string, status: InvoiceStatus): Promi
   if (error) throw new Error(error.message)
 }
 
+/**
+ * Delete an invoice. Its line items cascade automatically; any expenses it
+ * billed are freed (invoice_id is SET NULL by the FK, but we also clear the
+ * `invoiced` flag so they can be billed again).
+ */
+export async function deleteInvoice(id: string): Promise<void> {
+  const { error: exErr } = await supabase
+    .from('expenses')
+    .update({ invoiced: false, invoice_id: null })
+    .eq('invoice_id', id)
+  if (exErr) throw new Error(exErr.message)
+
+  const { error } = await supabase.from('invoices').delete().eq('id', id)
+  if (error) throw new Error(error.message)
+}
+
 export async function getInvoice(id: string): Promise<InvoiceWithItems> {
   const { data, error } = await supabase
     .from('invoices')
