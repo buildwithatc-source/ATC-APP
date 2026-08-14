@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@renderer/components/ui'
+import { UpdatingOverlay, useInstallUpdate } from '@renderer/components/UpdatingOverlay'
 import type { UpdateStatus } from '@shared/update'
 
 function describe(status: UpdateStatus): string {
@@ -27,6 +28,7 @@ export function UpdatePanel(): JSX.Element {
   const [version, setVersion] = useState('…')
   const [status, setStatus] = useState<UpdateStatus>({ state: 'idle' })
   const [checking, setChecking] = useState(false)
+  const { installing, install } = useInstallUpdate()
 
   useEffect(() => {
     window.api.getAppVersion().then(setVersion).catch(() => setVersion('unknown'))
@@ -59,10 +61,9 @@ export function UpdatePanel(): JSX.Element {
         <Button variant="ghost" loading={busy} onClick={() => void check()}>
           Check for updates
         </Button>
-        {status.state === 'downloaded' && (
-          <Button onClick={() => void window.api.updates.install()}>Restart to update</Button>
-        )}
+        {status.state === 'downloaded' && <Button onClick={install}>Restart to update</Button>}
       </div>
+      <UpdatingOverlay open={installing} />
 
       <p
         className={`mt-3 text-sm ${

@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '@renderer/auth/AuthContext'
 import { IdleLock } from '@renderer/auth/IdleLock'
+import { UpdateNotice } from './UpdateNotice'
 import { Button } from './ui'
 import logo from '@renderer/assets/logo.png'
 
@@ -18,6 +19,7 @@ export function AppLayout(): JSX.Element {
   return (
     <div className="flex h-full">
       <IdleLock />
+      <UpdateNotice />
       <aside className="flex w-56 flex-shrink-0 flex-col border-r border-slate-200 bg-white">
         <div className="flex items-center gap-2 px-5 py-4">
           <img src={logo} alt="ATC" className="h-8 w-auto object-contain" />

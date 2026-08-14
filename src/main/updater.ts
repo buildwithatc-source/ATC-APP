@@ -1,4 +1,4 @@
-import { app, dialog, type BrowserWindow, type IpcMain } from 'electron'
+import { app, type BrowserWindow, type IpcMain } from 'electron'
 import electronUpdater from 'electron-updater'
 import type { UpdateStatus } from '../shared/update'
 
@@ -22,25 +22,10 @@ function wireEvents(): void {
     push({ state: 'downloading', percent: Math.round(p.percent) })
   )
   autoUpdater.on('error', (err) => push({ state: 'error', message: err.message }))
+  // The renderer shows an in-app banner for this (see UpdateNotice); no native dialog.
   autoUpdater.on('update-downloaded', (info) => {
     push({ state: 'downloaded', version: info.version })
-    void promptRestart(info.version)
   })
-}
-
-async function promptRestart(version: string): Promise<void> {
-  if (!win) return
-  const { response } = await dialog.showMessageBox(win, {
-    type: 'info',
-    buttons: ['Restart now', 'Later'],
-    defaultId: 0,
-    cancelId: 1,
-    title: 'Update ready',
-    message: `ATC Ledger ${version} has been downloaded.`,
-    detail: 'Restart the app to finish installing the update.'
-  })
-  // (true, true) = install silently (no NSIS wizard) and relaunch the app.
-  if (response === 0) autoUpdater.quitAndInstall(true, true)
 }
 
 export function initUpdater(browserWindow: BrowserWindow): void {
