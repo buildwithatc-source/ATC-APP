@@ -7,9 +7,18 @@ import { FullscreenSpinner } from '@renderer/components/FullscreenSpinner'
 import { getBusiness, updateBusiness } from '@renderer/lib/db/business'
 import type { Business } from '@renderer/lib/types'
 import { useToast } from '@renderer/components/Toast'
+import { StatusTabs } from '@renderer/components/StatusTabs'
 import { UpdatePanel } from './UpdatePanel'
 import { ChangePasswordCard } from './ChangePasswordCard'
 import { AutoLockCard } from './AutoLockCard'
+
+type SettingsTab = 'business' | 'security' | 'application'
+
+const SETTINGS_TABS: { value: SettingsTab; label: string }[] = [
+  { value: 'business', label: 'Business' },
+  { value: 'security', label: 'Security' },
+  { value: 'application', label: 'Application' }
+]
 
 const schema = z.object({
   name: z.string().min(1, 'Business name is required'),
@@ -25,6 +34,7 @@ const MAX_LOGO_BYTES = 500 * 1024 // 500 KB — stored inline as a data URL
 
 export function Settings(): JSX.Element {
   const { toast } = useToast()
+  const [tab, setTab] = useState<SettingsTab>('business')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [business, setBusiness] = useState<Business | null>(null)
@@ -102,15 +112,33 @@ export function Settings(): JSX.Element {
 
   return (
     <div className="mx-auto max-w-2xl p-6">
-      <h1 className="mb-5 text-2xl font-semibold">Settings</h1>
+      <h1 className="mb-4 text-2xl font-semibold">Settings</h1>
 
-      {error && (
-        <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700 ring-1 ring-red-200">
-          {error}
+      <div className="mb-5">
+        <StatusTabs tabs={SETTINGS_TABS} value={tab} onChange={setTab} />
+      </div>
+
+      {tab === 'security' && (
+        <div className="space-y-5">
+          <ChangePasswordCard />
+          <AutoLockCard />
         </div>
       )}
 
-      <form onSubmit={onSubmit} className="space-y-5 rounded-xl bg-white p-5 ring-1 ring-slate-200">
+      {tab === 'application' && <UpdatePanel />}
+
+      {tab === 'business' && (
+        <>
+          {error && (
+            <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700 ring-1 ring-red-200">
+              {error}
+            </div>
+          )}
+
+          <form
+            onSubmit={onSubmit}
+            className="space-y-5 rounded-xl bg-white p-5 ring-1 ring-slate-200"
+          >
         <h2 className="font-semibold">Business details</h2>
         <p className="-mt-3 text-sm text-slate-500">These appear on the invoice header.</p>
 
@@ -164,17 +192,11 @@ export function Settings(): JSX.Element {
           <Button type="submit" loading={isSubmitting}>
             Save changes
           </Button>
-          {saved && <span className="text-sm text-emerald-600">Saved ✓</span>}
-        </div>
-      </form>
-
-      <ChangePasswordCard />
-
-      <AutoLockCard />
-
-      <div className="mt-5">
-        <UpdatePanel />
-      </div>
+            {saved && <span className="text-sm text-emerald-600">Saved ✓</span>}
+            </div>
+          </form>
+        </>
+      )}
     </div>
   )
 }

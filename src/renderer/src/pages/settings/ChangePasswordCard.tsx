@@ -39,7 +39,7 @@ export function ChangePasswordCard(): JSX.Element {
   return (
     <form
       onSubmit={(e) => void submit(e)}
-      className="mt-5 space-y-4 rounded-xl bg-white p-5 ring-1 ring-slate-200"
+      className="space-y-4 rounded-xl bg-white p-5 ring-1 ring-slate-200"
     >
       <div>
         <h2 className="font-semibold">Change password</h2>

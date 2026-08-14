@@ -17,7 +17,7 @@ export function AutoLockCard(): JSX.Element {
   const { toast } = useToast()
 
   return (
-    <div className="mt-5 space-y-3 rounded-xl bg-white p-5 ring-1 ring-slate-200">
+    <div className="space-y-3 rounded-xl bg-white p-5 ring-1 ring-slate-200">
       <div>
         <h2 className="font-semibold">Auto-lock</h2>
         <p className="text-sm text-slate-500">
