@@ -9,6 +9,7 @@ import type { Business } from '@renderer/lib/types'
 import { useToast } from '@renderer/components/Toast'
 import { UpdatePanel } from './UpdatePanel'
 import { ChangePasswordCard } from './ChangePasswordCard'
+import { AutoLockCard } from './AutoLockCard'
 
 const schema = z.object({
   name: z.string().min(1, 'Business name is required'),
@@ -168,6 +169,8 @@ export function Settings(): JSX.Element {
       </form>
 
       <ChangePasswordCard />
+
+      <AutoLockCard />
 
       <div className="mt-5">
         <UpdatePanel />

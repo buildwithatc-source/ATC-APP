@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './auth/AuthContext'
 import { RequireAuth } from './auth/RequireAuth'
 import { AppLayout } from './components/AppLayout'
 import { ToastProvider } from './components/Toast'
+import { LockSettingsProvider } from './lib/lockSettings'
 import { FullscreenSpinner } from './components/FullscreenSpinner'
 import { Login } from './pages/Login'
 import { Dashboard } from './pages/dashboard/Dashboard'
@@ -53,11 +54,13 @@ function AppRoutes(): JSX.Element {
 function App(): JSX.Element {
   return (
     <ToastProvider>
-      <AuthProvider>
-        <HashRouter>
-          <AppRoutes />
-        </HashRouter>
-      </AuthProvider>
+      <LockSettingsProvider>
+        <AuthProvider>
+          <HashRouter>
+            <AppRoutes />
+          </HashRouter>
+        </AuthProvider>
+      </LockSettingsProvider>
     </ToastProvider>
   )
 }

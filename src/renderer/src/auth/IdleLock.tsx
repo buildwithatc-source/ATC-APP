@@ -1,10 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from './AuthContext'
+import { useLockSettings } from '@renderer/lib/lockSettings'
 import { Button } from '@renderer/components/ui'
 import logo from '@renderer/assets/logo.png'
-
-/** Lock the app after this much inactivity (ms). */
-const IDLE_MS = 15 * 60 * 1000
 
 /**
  * Locks the app after a period of no activity and requires the account password
@@ -13,6 +11,7 @@ const IDLE_MS = 15 * 60 * 1000
  */
 export function IdleLock(): JSX.Element | null {
   const { email, signIn, signOut } = useAuth()
+  const { minutes } = useLockSettings()
   const [locked, setLocked] = useState(false)
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
@@ -20,6 +19,9 @@ export function IdleLock(): JSX.Element | null {
   const lastActivity = useRef(Date.now())
 
   useEffect(() => {
+    // 0 (or less) disables auto-lock entirely.
+    if (minutes <= 0) return
+    const idleMs = minutes * 60 * 1000
     const bump = (): void => {
       lastActivity.current = Date.now()
     }
@@ -32,13 +34,13 @@ export function IdleLock(): JSX.Element | null {
     ]
     events.forEach((e) => window.addEventListener(e, bump, { passive: true }))
     const timer = setInterval(() => {
-      if (!locked && Date.now() - lastActivity.current > IDLE_MS) setLocked(true)
+      if (!locked && Date.now() - lastActivity.current > idleMs) setLocked(true)
     }, 15000)
     return () => {
       events.forEach((e) => window.removeEventListener(e, bump))
       clearInterval(timer)
     }
-  }, [locked])
+  }, [locked, minutes])
 
   async function unlock(e: React.FormEvent): Promise<void> {
     e.preventDefault()
