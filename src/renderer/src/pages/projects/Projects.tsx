@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useCachedQuery } from '@renderer/lib/useCachedQuery'
 import { Button, TextField } from '@renderer/components/ui'
 import { FullscreenSpinner } from '@renderer/components/FullscreenSpinner'
 import { ConfirmDeleteModal } from '@renderer/components/ConfirmDeleteModal'
@@ -13,7 +14,7 @@ import {
 } from '@renderer/lib/db/projects'
 import { getExpenseTotalsByProject } from '@renderer/lib/db/expenses'
 import { formatPeso } from '@renderer/lib/format'
-import type { Client, ProjectInput, ProjectStatus, ProjectWithClient } from '@renderer/lib/types'
+import type { ProjectInput, ProjectStatus, ProjectWithClient } from '@renderer/lib/types'
 import { ProjectFormModal } from './ProjectFormModal'
 import { ProjectStatusSelect } from './ProjectStatusSelect'
 
@@ -25,36 +26,21 @@ const TABS: { value: ProjectStatus; label: string }[] = [
 
 export function Projects(): JSX.Element {
   const navigate = useNavigate()
-  const [projects, setProjects] = useState<ProjectWithClient[]>([])
-  const [clients, setClients] = useState<Client[]>([])
-  const [expenseTotals, setExpenseTotals] = useState<Record<string, number>>({})
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const projectsQ = useCachedQuery('projects', listProjects)
+  const clientsQ = useCachedQuery('clients', listClients)
+  const totalsQ = useCachedQuery('expenseTotals', getExpenseTotalsByProject)
+  const projects = projectsQ.data ?? []
+  const clients = clientsQ.data ?? []
+  const expenseTotals = totalsQ.data ?? {}
+  const loading = projectsQ.loading
   const [search, setSearch] = useState('')
   const [tab, setTab] = useState<ProjectStatus>('active')
   const [formOpen, setFormOpen] = useState(false)
   const [statusBusy, setStatusBusy] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<ProjectWithClient | null>(null)
   const [deleteBusy, setDeleteBusy] = useState(false)
-
-  useEffect(() => {
-    ;(async () => {
-      try {
-        const [pr, cl, totals] = await Promise.all([
-          listProjects(),
-          listClients(),
-          getExpenseTotalsByProject()
-        ])
-        setProjects(pr)
-        setClients(cl)
-        setExpenseTotals(totals)
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Failed to load projects')
-      } finally {
-        setLoading(false)
-      }
-    })()
-  }, [])
+  const [actionError, setActionError] = useState<string | null>(null)
+  const error = projectsQ.error ?? actionError
 
   const counts = useMemo(() => {
     const c: Record<ProjectStatus, number> = { active: 0, complete: 0, archived: 0 }
@@ -74,7 +60,7 @@ export function Projects(): JSX.Element {
 
   async function handleCreate(input: ProjectInput): Promise<void> {
     const created = await createProject(input)
-    setProjects(await listProjects())
+    await projectsQ.reload()
     setFormOpen(false)
     navigate(`/projects/${created.id}`)
   }
@@ -82,11 +68,11 @@ export function Projects(): JSX.Element {
   async function changeStatus(p: ProjectWithClient, status: ProjectStatus): Promise<void> {
     const prev = p.status
     setStatusBusy(p.id)
-    setProjects((ps) => ps.map((x) => (x.id === p.id ? { ...x, status } : x)))
+    projectsQ.setData((ps) => (ps ?? []).map((x) => (x.id === p.id ? { ...x, status } : x)))
     try {
       await setProjectStatus(p.id, status)
     } catch {
-      setProjects((ps) => ps.map((x) => (x.id === p.id ? { ...x, status: prev } : x)))
+      projectsQ.setData((ps) => (ps ?? []).map((x) => (x.id === p.id ? { ...x, status: prev } : x)))
     } finally {
       setStatusBusy(null)
     }
@@ -95,13 +81,13 @@ export function Projects(): JSX.Element {
   async function confirmDelete(): Promise<void> {
     if (!deleting) return
     setDeleteBusy(true)
-    setError(null)
+    setActionError(null)
     try {
       await deleteProject(deleting.id)
-      setProjects((ps) => ps.filter((x) => x.id !== deleting.id))
+      projectsQ.setData((ps) => (ps ?? []).filter((x) => x.id !== deleting.id))
       setDeleting(null)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to delete project')
+      setActionError(e instanceof Error ? e.message : 'Failed to delete project')
     } finally {
       setDeleteBusy(false)
     }

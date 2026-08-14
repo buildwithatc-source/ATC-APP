@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
+import { useCachedQuery } from '@renderer/lib/useCachedQuery'
 import { Button, TextField } from '@renderer/components/ui'
 import { Modal } from '@renderer/components/Modal'
 import { FullscreenSpinner } from '@renderer/components/FullscreenSpinner'
@@ -20,9 +21,10 @@ type Props = {
 
 /** Generic contact table (search, add, edit, delete) shared by clients & suppliers. */
 export function ContactList({ noun, nounPlural, list, create, update, remove }: Props): JSX.Element {
-  const [rows, setRows] = useState<Contact[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const query = useCachedQuery<Contact[]>(nounPlural, list)
+  const rows = query.data ?? []
+  const loading = query.loading
+  const error = query.error
   const [search, setSearch] = useState('')
 
   const [formOpen, setFormOpen] = useState(false)
@@ -30,23 +32,6 @@ export function ContactList({ noun, nounPlural, list, create, update, remove }: 
   const [deleting, setDeleting] = useState<Contact | null>(null)
   const [deleteBusy, setDeleteBusy] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
-
-  async function refresh(): Promise<void> {
-    setLoading(true)
-    setError(null)
-    try {
-      setRows(await list())
-    } catch (e) {
-      setError(e instanceof Error ? e.message : `Failed to load ${nounPlural}`)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    void refresh()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nounPlural])
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -61,10 +46,12 @@ export function ContactList({ noun, nounPlural, list, create, update, remove }: 
   async function handleSubmit(input: ContactInput): Promise<void> {
     if (editing) {
       const updated = await update(editing.id, input)
-      setRows((prev) => prev.map((c) => (c.id === updated.id ? updated : c)))
+      query.setData((prev) => (prev ?? []).map((c) => (c.id === updated.id ? updated : c)))
     } else {
       const created = await create(input)
-      setRows((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)))
+      query.setData((prev) =>
+        [...(prev ?? []), created].sort((a, b) => a.name.localeCompare(b.name))
+      )
     }
     setFormOpen(false)
   }
@@ -75,7 +62,7 @@ export function ContactList({ noun, nounPlural, list, create, update, remove }: 
     setDeleteError(null)
     try {
       await remove(deleting.id)
-      setRows((prev) => prev.filter((c) => c.id !== deleting.id))
+      query.setData((prev) => (prev ?? []).filter((c) => c.id !== deleting.id))
       setDeleting(null)
     } catch (e) {
       setDeleteError(e instanceof Error ? e.message : `Failed to delete ${noun}`)
@@ -116,7 +103,7 @@ export function ContactList({ noun, nounPlural, list, create, update, remove }: 
       ) : error ? (
         <div className="rounded-lg bg-red-50 p-4 text-sm text-red-700 ring-1 ring-red-200">
           {error}
-          <button onClick={() => void refresh()} className="ml-2 underline">
+          <button onClick={() => void query.reload()} className="ml-2 underline">
             Retry
           </button>
         </div>

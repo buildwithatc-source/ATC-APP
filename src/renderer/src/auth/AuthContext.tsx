@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '@renderer/lib/supabase'
 import { emailToUsername, usernameToEmail } from '@renderer/lib/config'
+import { clearQueryCache } from '@renderer/lib/useCachedQuery'
 
 type AuthState = {
   /** True until the initial session lookup completes. */
@@ -54,6 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
       },
       async signOut() {
         await supabase.auth.signOut()
+        clearQueryCache()
       }
     }
   }, [initializing, session])

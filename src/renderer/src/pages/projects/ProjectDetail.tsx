@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useCachedQuery } from '@renderer/lib/useCachedQuery'
 import { Button } from '@renderer/components/ui'
 import { Modal } from '@renderer/components/Modal'
 import { FullscreenSpinner } from '@renderer/components/FullscreenSpinner'
@@ -20,13 +21,7 @@ import {
   updateExpense
 } from '@renderer/lib/db/expenses'
 import { formatPeso, formatTemplateDate } from '@renderer/lib/format'
-import type {
-  BudgetCategory,
-  Expense,
-  ExpenseInput,
-  ProjectWithClient,
-  Supplier
-} from '@renderer/lib/types'
+import type { Expense, ExpenseInput, ProjectWithClient } from '@renderer/lib/types'
 import { ExpenseFormModal } from './ExpenseFormModal'
 import { ExpenseImageButton } from './ExpenseImageButton'
 import { BudgetTab } from './BudgetTab'
@@ -42,43 +37,27 @@ const TAB_LABELS: Record<Tab, string> = {
 
 export function ProjectDetail(): JSX.Element {
   const { id } = useParams<{ id: string }>()
+  const pid = id ?? ''
   const navigate = useNavigate()
-  const [project, setProject] = useState<ProjectWithClient | null>(null)
-  const [expenses, setExpenses] = useState<Expense[]>([])
-  const [categories, setCategories] = useState<BudgetCategory[]>([])
-  const [suppliers, setSuppliers] = useState<Supplier[]>([])
-  const [paymentMethods, setPaymentMethods] = useState<string[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [tab, setTab] = useState<Tab>('expenses')
 
+  const projectQ = useCachedQuery(`project:${pid}`, () => getProject(pid))
+  const expensesQ = useCachedQuery(`expenses:${pid}`, () => listExpenses(pid))
+  const categoriesQ = useCachedQuery(`categories:${pid}`, () => listBudgetCategories(pid))
+  const suppliersQ = useCachedQuery('suppliers', listSuppliers)
+  const paymentQ = useCachedQuery('paymentMethods', listPaymentMethods)
+
+  const project = projectQ.data ?? null
+  const expenses = expensesQ.data ?? []
+  const categories = categoriesQ.data ?? []
+  const suppliers = suppliersQ.data ?? []
+  const paymentMethods = (paymentQ.data ?? []).map((m) => m.name)
+  const loading = projectQ.loading || expensesQ.loading || categoriesQ.loading
+  const error = projectQ.error ?? expensesQ.error ?? categoriesQ.error
+
+  const [tab, setTab] = useState<Tab>('expenses')
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<Expense | null>(null)
   const [deleting, setDeleting] = useState<Expense | null>(null)
-
-  useEffect(() => {
-    if (!id) return
-    ;(async () => {
-      try {
-        const [pr, ex, cats, sups, pms] = await Promise.all([
-          getProject(id),
-          listExpenses(id),
-          listBudgetCategories(id),
-          listSuppliers(),
-          listPaymentMethods()
-        ])
-        setProject(pr)
-        setExpenses(ex)
-        setCategories(cats)
-        setSuppliers(sups)
-        setPaymentMethods(pms.map((m) => m.name))
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Failed to load project')
-      } finally {
-        setLoading(false)
-      }
-    })()
-  }, [id])
 
   const catName = useMemo(() => {
     const m = new Map(categories.map((c) => [c.id, c.name]))
@@ -92,26 +71,26 @@ export function ProjectDetail(): JSX.Element {
 
   /** Add a budget category from the expense form (also appears in My budget). */
   async function createCategoryInline(name: string): Promise<{ id: string; name: string }> {
-    if (!id) throw new Error('No project')
-    const created = await createBudgetCategory(id, { name, budget_amount: 0 })
-    setCategories((prev) => [...prev, created])
+    if (!pid) throw new Error('No project')
+    const created = await createBudgetCategory(pid, { name, budget_amount: 0 })
+    categoriesQ.setData((prev) => [...(prev ?? []), created])
     return { id: created.id, name: created.name }
   }
 
   /** Delete a budget category from the expense form (its expenses go uncategorized). */
   async function deleteCategoryInline(categoryId: string): Promise<void> {
     await deleteBudgetCategory(categoryId)
-    setCategories((prev) => prev.filter((c) => c.id !== categoryId))
-    setExpenses((prev) =>
-      prev.map((e) => (e.category_id === categoryId ? { ...e, category_id: null } : e))
+    categoriesQ.setData((prev) => (prev ?? []).filter((c) => c.id !== categoryId))
+    expensesQ.setData((prev) =>
+      (prev ?? []).map((e) => (e.category_id === categoryId ? { ...e, category_id: null } : e))
     )
   }
 
   /** Add a supplier from the expense form (also appears on the Contacts page). */
   async function createSupplierInline(name: string): Promise<{ id: string; name: string }> {
     const created = await createSupplier({ name, address: null, contact_number: null })
-    setSuppliers((prev) =>
-      [...prev, created].sort((a, b) => a.name.localeCompare(b.name))
+    suppliersQ.setData((prev) =>
+      [...(prev ?? []), created].sort((a, b) => a.name.localeCompare(b.name))
     )
     return { id: created.id, name: created.name }
   }
@@ -119,11 +98,12 @@ export function ProjectDetail(): JSX.Element {
   /** Add a payment method from the expense form (persisted for reuse). */
   async function createPaymentMethodInline(name: string): Promise<{ id: string; name: string }> {
     const created = await createPaymentMethod(name)
-    setPaymentMethods((prev) =>
-      prev.some((n) => n.toLowerCase() === created.name.toLowerCase())
-        ? prev
-        : [...prev, created.name].sort((a, b) => a.localeCompare(b))
-    )
+    paymentQ.setData((prev) => {
+      const list = prev ?? []
+      return list.some((m) => m.name.toLowerCase() === created.name.toLowerCase())
+        ? list
+        : [...list, created].sort((a, b) => a.name.localeCompare(b.name))
+    })
     return { id: created.name, name: created.name }
   }
 
@@ -134,13 +114,13 @@ export function ProjectDetail(): JSX.Element {
   }, [expenses])
 
   async function handleSubmit(input: ExpenseInput): Promise<void> {
-    if (!id) return
+    if (!pid) return
     if (editing) {
       const updated = await updateExpense(editing.id, input)
-      setExpenses((prev) => prev.map((e) => (e.id === updated.id ? updated : e)))
+      expensesQ.setData((prev) => (prev ?? []).map((e) => (e.id === updated.id ? updated : e)))
     } else {
-      const created = await createExpense(id, input)
-      setExpenses((prev) => [created, ...prev])
+      const created = await createExpense(pid, input)
+      expensesQ.setData((prev) => [created, ...(prev ?? [])])
     }
     setFormOpen(false)
     setEditing(null)
@@ -148,32 +128,36 @@ export function ProjectDetail(): JSX.Element {
 
   async function toggleInvoiced(exp: Expense): Promise<void> {
     const next = !exp.invoiced
-    setExpenses((prev) => prev.map((e) => (e.id === exp.id ? { ...e, invoiced: next } : e)))
+    expensesQ.setData((prev) =>
+      (prev ?? []).map((e) => (e.id === exp.id ? { ...e, invoiced: next } : e))
+    )
     try {
       await setExpensesInvoiced([exp.id], next, null)
     } catch {
-      setExpenses((prev) => prev.map((e) => (e.id === exp.id ? { ...e, invoiced: exp.invoiced } : e)))
+      expensesQ.setData((prev) =>
+        (prev ?? []).map((e) => (e.id === exp.id ? { ...e, invoiced: exp.invoiced } : e))
+      )
     }
   }
 
   async function changeImage(exp: Expense, imageUrl: string | null): Promise<void> {
     await setExpenseImage(exp.id, imageUrl)
-    setExpenses((prev) => prev.map((e) => (e.id === exp.id ? { ...e, image_url: imageUrl } : e)))
+    expensesQ.setData((prev) =>
+      (prev ?? []).map((e) => (e.id === exp.id ? { ...e, image_url: imageUrl } : e))
+    )
   }
 
   async function confirmDelete(): Promise<void> {
     if (!deleting) return
     await deleteExpense(deleting.id)
-    setExpenses((prev) => prev.filter((e) => e.id !== deleting.id))
+    expensesQ.setData((prev) => (prev ?? []).filter((e) => e.id !== deleting.id))
     setDeleting(null)
   }
 
   /** After awarding a quotation: refresh contract budget + seeded categories, jump to My budget. */
   async function reloadAfterAward(): Promise<void> {
-    if (!id) return
-    const [pr, cats] = await Promise.all([getProject(id), listBudgetCategories(id)])
-    setProject(pr)
-    setCategories(cats)
+    if (!pid) return
+    await Promise.all([projectQ.reload(), categoriesQ.reload()])
     setTab('budget')
   }
 
@@ -241,9 +225,9 @@ export function ProjectDetail(): JSX.Element {
           project={project}
           expenses={expenses}
           categories={categories}
-          onCategoriesChanged={setCategories}
+          onCategoriesChanged={(cats) => categoriesQ.setData(cats)}
           onContractBudgetChanged={(amount) =>
-            setProject((p) => (p ? { ...p, contract_budget: amount } : p))
+            projectQ.setData((p) => ({ ...(p as ProjectWithClient), contract_budget: amount }))
           }
         />
       ) : (

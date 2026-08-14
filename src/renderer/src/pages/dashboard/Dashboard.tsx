@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useCachedQuery } from '@renderer/lib/useCachedQuery'
 import { Button } from '@renderer/components/ui'
 import { Modal } from '@renderer/components/Modal'
 import { FullscreenSpinner } from '@renderer/components/FullscreenSpinner'
@@ -7,7 +8,7 @@ import { StatusTabs } from '@renderer/components/StatusTabs'
 import { listClients } from '@renderer/lib/db/clients'
 import { deleteInvoice, listInvoices, setInvoiceStatus } from '@renderer/lib/db/invoices'
 import { formatPeso, formatTemplateDate } from '@renderer/lib/format'
-import type { Client, InvoiceListRow, InvoiceStatus } from '@renderer/lib/types'
+import type { InvoiceListRow, InvoiceStatus } from '@renderer/lib/types'
 import { StatTiles } from './StatTiles'
 import { InvoiceFilters, emptyFilters, type Filters } from './InvoiceFilters'
 import { InlineStatusSelect } from './InlineStatusSelect'
@@ -24,29 +25,17 @@ const STATUS_TABS: { value: StatusTab; label: string }[] = [
 
 export function Dashboard(): JSX.Element {
   const navigate = useNavigate()
-  const [rows, setRows] = useState<InvoiceListRow[]>([])
-  const [clients, setClients] = useState<Client[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const invoicesQ = useCachedQuery('invoices', listInvoices)
+  const clientsQ = useCachedQuery('clients', listClients)
+  const rows = invoicesQ.data ?? []
+  const clients = clientsQ.data ?? []
+  const loading = invoicesQ.loading
+  const error = invoicesQ.error
   const [filters, setFilters] = useState<Filters>(emptyFilters)
   const [statusBusy, setStatusBusy] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<InvoiceListRow | null>(null)
   const [deleteBusy, setDeleteBusy] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
-
-  useEffect(() => {
-    ;(async () => {
-      try {
-        const [inv, cl] = await Promise.all([listInvoices(), listClients()])
-        setRows(inv)
-        setClients(cl)
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Failed to load dashboard')
-      } finally {
-        setLoading(false)
-      }
-    })()
-  }, [])
 
   // Rows matching everything EXCEPT the status tab (so tab counts reflect the
   // other active filters).
@@ -87,12 +76,12 @@ export function Dashboard(): JSX.Element {
     const prev = row.status
     setStatusBusy(row.id)
     // Optimistic update.
-    setRows((rs) => rs.map((r) => (r.id === row.id ? { ...r, status } : r)))
+    invoicesQ.setData((rs) => (rs ?? []).map((r) => (r.id === row.id ? { ...r, status } : r)))
     try {
       await setInvoiceStatus(row.id, status)
     } catch {
       // Revert on failure.
-      setRows((rs) => rs.map((r) => (r.id === row.id ? { ...r, status: prev } : r)))
+      invoicesQ.setData((rs) => (rs ?? []).map((r) => (r.id === row.id ? { ...r, status: prev } : r)))
     } finally {
       setStatusBusy(null)
     }
@@ -104,7 +93,7 @@ export function Dashboard(): JSX.Element {
     setDeleteError(null)
     try {
       await deleteInvoice(deleting.id)
-      setRows((rs) => rs.filter((r) => r.id !== deleting.id))
+      invoicesQ.setData((rs) => (rs ?? []).filter((r) => r.id !== deleting.id))
       setDeleting(null)
     } catch (e) {
       setDeleteError(e instanceof Error ? e.message : 'Failed to delete invoice')

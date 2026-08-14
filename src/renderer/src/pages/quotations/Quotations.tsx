@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useCachedQuery } from '@renderer/lib/useCachedQuery'
 import { Button, TextField } from '@renderer/components/ui'
 import { FullscreenSpinner } from '@renderer/components/FullscreenSpinner'
 import { ConfirmDeleteModal } from '@renderer/components/ConfirmDeleteModal'
@@ -11,12 +12,7 @@ import {
   listQuotations,
   setQuotationStatus
 } from '@renderer/lib/db/quotations'
-import type {
-  Client,
-  QuotationInput,
-  QuotationStatus,
-  QuotationWithClient
-} from '@renderer/lib/types'
+import type { QuotationInput, QuotationStatus, QuotationWithClient } from '@renderer/lib/types'
 import { QuotationFormModal } from './QuotationFormModal'
 import { QuotationStatusSelect } from './QuotationStatusSelect'
 
@@ -28,30 +24,19 @@ const TABS: { value: QuotationStatus; label: string }[] = [
 
 export function Quotations(): JSX.Element {
   const navigate = useNavigate()
-  const [quotations, setQuotations] = useState<QuotationWithClient[]>([])
-  const [clients, setClients] = useState<Client[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const quotationsQ = useCachedQuery('quotations', listQuotations)
+  const clientsQ = useCachedQuery('clients', listClients)
+  const quotations = quotationsQ.data ?? []
+  const clients = clientsQ.data ?? []
+  const loading = quotationsQ.loading
   const [search, setSearch] = useState('')
   const [tab, setTab] = useState<QuotationStatus>('active')
   const [formOpen, setFormOpen] = useState(false)
   const [statusBusy, setStatusBusy] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<QuotationWithClient | null>(null)
   const [deleteBusy, setDeleteBusy] = useState(false)
-
-  useEffect(() => {
-    ;(async () => {
-      try {
-        const [qs, cl] = await Promise.all([listQuotations(), listClients()])
-        setQuotations(qs)
-        setClients(cl)
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Failed to load quotations')
-      } finally {
-        setLoading(false)
-      }
-    })()
-  }, [])
+  const [actionError, setActionError] = useState<string | null>(null)
+  const error = quotationsQ.error ?? actionError
 
   const counts = useMemo(() => {
     const c: Record<QuotationStatus, number> = { active: 0, complete: 0, archived: 0 }
@@ -78,11 +63,13 @@ export function Quotations(): JSX.Element {
   async function changeStatus(x: QuotationWithClient, status: QuotationStatus): Promise<void> {
     const prev = x.status
     setStatusBusy(x.id)
-    setQuotations((qs) => qs.map((q) => (q.id === x.id ? { ...q, status } : q)))
+    quotationsQ.setData((qs) => (qs ?? []).map((q) => (q.id === x.id ? { ...q, status } : q)))
     try {
       await setQuotationStatus(x.id, status)
     } catch {
-      setQuotations((qs) => qs.map((q) => (q.id === x.id ? { ...q, status: prev } : q)))
+      quotationsQ.setData((qs) =>
+        (qs ?? []).map((q) => (q.id === x.id ? { ...q, status: prev } : q))
+      )
     } finally {
       setStatusBusy(null)
     }
@@ -91,13 +78,13 @@ export function Quotations(): JSX.Element {
   async function confirmDelete(): Promise<void> {
     if (!deleting) return
     setDeleteBusy(true)
-    setError(null)
+    setActionError(null)
     try {
       await deleteQuotation(deleting.id)
-      setQuotations((qs) => qs.filter((x) => x.id !== deleting.id))
+      quotationsQ.setData((qs) => (qs ?? []).filter((x) => x.id !== deleting.id))
       setDeleting(null)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to delete quotation')
+      setActionError(e instanceof Error ? e.message : 'Failed to delete quotation')
     } finally {
       setDeleteBusy(false)
     }
