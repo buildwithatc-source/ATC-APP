@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useCachedQuery } from '@renderer/lib/useCachedQuery'
+import { useToast } from '@renderer/components/Toast'
 import { Button } from '@renderer/components/ui'
 import { Modal } from '@renderer/components/Modal'
 import { FullscreenSpinner } from '@renderer/components/FullscreenSpinner'
@@ -39,6 +40,7 @@ export function ProjectDetail(): JSX.Element {
   const { id } = useParams<{ id: string }>()
   const pid = id ?? ''
   const navigate = useNavigate()
+  const { toast } = useToast()
 
   const projectQ = useCachedQuery(`project:${pid}`, () => getProject(pid))
   const expensesQ = useCachedQuery(`expenses:${pid}`, () => listExpenses(pid))
@@ -123,6 +125,7 @@ export function ProjectDetail(): JSX.Element {
       expensesQ.setData((prev) => [created, ...(prev ?? [])])
     }
     setFormOpen(false)
+    toast(editing ? 'Expense updated' : 'Expense added')
     setEditing(null)
   }
 
@@ -149,9 +152,14 @@ export function ProjectDetail(): JSX.Element {
 
   async function confirmDelete(): Promise<void> {
     if (!deleting) return
-    await deleteExpense(deleting.id)
-    expensesQ.setData((prev) => (prev ?? []).filter((e) => e.id !== deleting.id))
-    setDeleting(null)
+    try {
+      await deleteExpense(deleting.id)
+      expensesQ.setData((prev) => (prev ?? []).filter((e) => e.id !== deleting.id))
+      setDeleting(null)
+      toast('Expense deleted')
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Could not delete expense', 'error')
+    }
   }
 
   /** After awarding a quotation: refresh contract budget + seeded categories, jump to My budget. */

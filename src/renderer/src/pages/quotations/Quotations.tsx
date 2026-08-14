@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCachedQuery } from '@renderer/lib/useCachedQuery'
+import { useToast } from '@renderer/components/Toast'
 import { Button, TextField } from '@renderer/components/ui'
 import { FullscreenSpinner } from '@renderer/components/FullscreenSpinner'
 import { ConfirmDeleteModal } from '@renderer/components/ConfirmDeleteModal'
@@ -24,6 +25,7 @@ const TABS: { value: QuotationStatus; label: string }[] = [
 
 export function Quotations(): JSX.Element {
   const navigate = useNavigate()
+  const { toast } = useToast()
   const quotationsQ = useCachedQuery('quotations', listQuotations)
   const clientsQ = useCachedQuery('clients', listClients)
   const quotations = quotationsQ.data ?? []
@@ -83,8 +85,10 @@ export function Quotations(): JSX.Element {
       await deleteQuotation(deleting.id)
       quotationsQ.setData((qs) => (qs ?? []).filter((x) => x.id !== deleting.id))
       setDeleting(null)
+      toast('Quotation deleted')
     } catch (e) {
       setActionError(e instanceof Error ? e.message : 'Failed to delete quotation')
+      toast('Could not delete quotation', 'error')
     } finally {
       setDeleteBusy(false)
     }

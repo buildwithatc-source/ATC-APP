@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useCachedQuery } from '@renderer/lib/useCachedQuery'
+import { useToast } from '@renderer/components/Toast'
 import { Button, TextField } from '@renderer/components/ui'
 import { Modal } from '@renderer/components/Modal'
 import { FullscreenSpinner } from '@renderer/components/FullscreenSpinner'
@@ -21,6 +22,7 @@ type Props = {
 
 /** Generic contact table (search, add, edit, delete) shared by clients & suppliers. */
 export function ContactList({ noun, nounPlural, list, create, update, remove }: Props): JSX.Element {
+  const { toast } = useToast()
   const query = useCachedQuery<Contact[]>(nounPlural, list)
   const rows = query.data ?? []
   const loading = query.loading
@@ -54,6 +56,7 @@ export function ContactList({ noun, nounPlural, list, create, update, remove }: 
       )
     }
     setFormOpen(false)
+    toast(`${cap(noun)} ${editing ? 'updated' : 'added'}`)
   }
 
   async function confirmDelete(): Promise<void> {
@@ -64,8 +67,10 @@ export function ContactList({ noun, nounPlural, list, create, update, remove }: 
       await remove(deleting.id)
       query.setData((prev) => (prev ?? []).filter((c) => c.id !== deleting.id))
       setDeleting(null)
+      toast(`${cap(noun)} deleted`)
     } catch (e) {
       setDeleteError(e instanceof Error ? e.message : `Failed to delete ${noun}`)
+      toast(`Could not delete ${noun}`, 'error')
     } finally {
       setDeleteBusy(false)
     }

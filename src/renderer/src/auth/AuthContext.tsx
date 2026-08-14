@@ -11,8 +11,11 @@ type AuthState = {
   user: User | null
   /** Display username derived from the auth email (profiles table wired in Phase 3). */
   username: string
+  /** The signed-in account's email (used to re-authenticate, e.g. idle unlock). */
+  email: string
   signIn: (username: string, password: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
+  changePassword: (newPassword: string) => Promise<{ error: string | null }>
 }
 
 const AuthContext = createContext<AuthState | undefined>(undefined)
@@ -48,6 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
       session,
       user: session?.user ?? null,
       username: emailToUsername(session?.user?.email),
+      email: session?.user?.email ?? '',
       async signIn(username, password) {
         const email = usernameToEmail(username)
         const { error } = await supabase.auth.signInWithPassword({ email, password })
@@ -56,6 +60,10 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
       async signOut() {
         await supabase.auth.signOut()
         clearQueryCache()
+      },
+      async changePassword(newPassword) {
+        const { error } = await supabase.auth.updateUser({ password: newPassword })
+        return { error: error ? error.message : null }
       }
     }
   }, [initializing, session])

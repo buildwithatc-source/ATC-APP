@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCachedQuery } from '@renderer/lib/useCachedQuery'
+import { useToast } from '@renderer/components/Toast'
 import { Button } from '@renderer/components/ui'
 import { Modal } from '@renderer/components/Modal'
 import { FullscreenSpinner } from '@renderer/components/FullscreenSpinner'
@@ -25,6 +26,7 @@ const STATUS_TABS: { value: StatusTab; label: string }[] = [
 
 export function Dashboard(): JSX.Element {
   const navigate = useNavigate()
+  const { toast } = useToast()
   const invoicesQ = useCachedQuery('invoices', listInvoices)
   const clientsQ = useCachedQuery('clients', listClients)
   const rows = invoicesQ.data ?? []
@@ -95,8 +97,10 @@ export function Dashboard(): JSX.Element {
       await deleteInvoice(deleting.id)
       invoicesQ.setData((rs) => (rs ?? []).filter((r) => r.id !== deleting.id))
       setDeleting(null)
+      toast('Invoice deleted')
     } catch (e) {
       setDeleteError(e instanceof Error ? e.message : 'Failed to delete invoice')
+      toast('Could not delete invoice', 'error')
     } finally {
       setDeleteBusy(false)
     }

@@ -2,6 +2,7 @@ import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import { RequireAuth } from './auth/RequireAuth'
 import { AppLayout } from './components/AppLayout'
+import { ToastProvider } from './components/Toast'
 import { FullscreenSpinner } from './components/FullscreenSpinner'
 import { Login } from './pages/Login'
 import { Dashboard } from './pages/dashboard/Dashboard'
@@ -51,11 +52,13 @@ function AppRoutes(): JSX.Element {
 
 function App(): JSX.Element {
   return (
-    <AuthProvider>
-      <HashRouter>
-        <AppRoutes />
-      </HashRouter>
-    </AuthProvider>
+    <ToastProvider>
+      <AuthProvider>
+        <HashRouter>
+          <AppRoutes />
+        </HashRouter>
+      </AuthProvider>
+    </ToastProvider>
   )
 }
 

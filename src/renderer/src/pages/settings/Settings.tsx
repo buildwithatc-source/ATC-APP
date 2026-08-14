@@ -6,7 +6,9 @@ import { Button, TextField } from '@renderer/components/ui'
 import { FullscreenSpinner } from '@renderer/components/FullscreenSpinner'
 import { getBusiness, updateBusiness } from '@renderer/lib/db/business'
 import type { Business } from '@renderer/lib/types'
+import { useToast } from '@renderer/components/Toast'
 import { UpdatePanel } from './UpdatePanel'
+import { ChangePasswordCard } from './ChangePasswordCard'
 
 const schema = z.object({
   name: z.string().min(1, 'Business name is required'),
@@ -21,6 +23,7 @@ type FormValues = z.infer<typeof schema>
 const MAX_LOGO_BYTES = 500 * 1024 // 500 KB — stored inline as a data URL
 
 export function Settings(): JSX.Element {
+  const { toast } = useToast()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [business, setBusiness] = useState<Business | null>(null)
@@ -87,8 +90,10 @@ export function Settings(): JSX.Element {
       })
       setBusiness(updated)
       setSaved(true)
+      toast('Settings saved')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save')
+      toast('Could not save settings', 'error')
     }
   })
 
@@ -161,6 +166,8 @@ export function Settings(): JSX.Element {
           {saved && <span className="text-sm text-emerald-600">Saved ✓</span>}
         </div>
       </form>
+
+      <ChangePasswordCard />
 
       <div className="mt-5">
         <UpdatePanel />

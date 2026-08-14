@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCachedQuery } from '@renderer/lib/useCachedQuery'
+import { useToast } from '@renderer/components/Toast'
 import { Button, TextField } from '@renderer/components/ui'
 import { FullscreenSpinner } from '@renderer/components/FullscreenSpinner'
 import { ConfirmDeleteModal } from '@renderer/components/ConfirmDeleteModal'
@@ -26,6 +27,7 @@ const TABS: { value: ProjectStatus; label: string }[] = [
 
 export function Projects(): JSX.Element {
   const navigate = useNavigate()
+  const { toast } = useToast()
   const projectsQ = useCachedQuery('projects', listProjects)
   const clientsQ = useCachedQuery('clients', listClients)
   const totalsQ = useCachedQuery('expenseTotals', getExpenseTotalsByProject)
@@ -86,8 +88,10 @@ export function Projects(): JSX.Element {
       await deleteProject(deleting.id)
       projectsQ.setData((ps) => (ps ?? []).filter((x) => x.id !== deleting.id))
       setDeleting(null)
+      toast('Project deleted')
     } catch (e) {
       setActionError(e instanceof Error ? e.message : 'Failed to delete project')
+      toast('Could not delete project', 'error')
     } finally {
       setDeleteBusy(false)
     }
