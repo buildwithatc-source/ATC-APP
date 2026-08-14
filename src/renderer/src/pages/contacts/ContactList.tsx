@@ -2,24 +2,32 @@ import { useEffect, useMemo, useState } from 'react'
 import { Button, TextField } from '@renderer/components/ui'
 import { Modal } from '@renderer/components/Modal'
 import { FullscreenSpinner } from '@renderer/components/FullscreenSpinner'
-import type { Client, ClientInput } from '@renderer/lib/types'
-import {
-  createClient,
-  deleteClient,
-  listClients,
-  updateClient
-} from '@renderer/lib/db/clients'
-import { ClientFormModal } from './ClientFormModal'
+import type { Contact, ContactInput } from '@renderer/lib/types'
+import { ContactFormModal } from './ContactFormModal'
 
-export function Clients(): JSX.Element {
-  const [clients, setClients] = useState<Client[]>([])
+const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1)
+
+type Props = {
+  /** Singular noun, e.g. 'client' or 'supplier'. */
+  noun: string
+  /** Plural noun, e.g. 'clients' or 'suppliers'. */
+  nounPlural: string
+  list: () => Promise<Contact[]>
+  create: (input: ContactInput) => Promise<Contact>
+  update: (id: string, input: ContactInput) => Promise<Contact>
+  remove: (id: string) => Promise<void>
+}
+
+/** Generic contact table (search, add, edit, delete) shared by clients & suppliers. */
+export function ContactList({ noun, nounPlural, list, create, update, remove }: Props): JSX.Element {
+  const [rows, setRows] = useState<Contact[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
 
   const [formOpen, setFormOpen] = useState(false)
-  const [editing, setEditing] = useState<Client | null>(null)
-  const [deleting, setDeleting] = useState<Client | null>(null)
+  const [editing, setEditing] = useState<Contact | null>(null)
+  const [deleting, setDeleting] = useState<Contact | null>(null)
   const [deleteBusy, setDeleteBusy] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
@@ -27,9 +35,9 @@ export function Clients(): JSX.Element {
     setLoading(true)
     setError(null)
     try {
-      setClients(await listClients())
+      setRows(await list())
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load clients')
+      setError(e instanceof Error ? e.message : `Failed to load ${nounPlural}`)
     } finally {
       setLoading(false)
     }
@@ -37,35 +45,26 @@ export function Clients(): JSX.Element {
 
   useEffect(() => {
     void refresh()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nounPlural])
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    if (!q) return clients
-    return clients.filter((c) =>
+    if (!q) return rows
+    return rows.filter((c) =>
       [c.name, c.address, c.contact_number]
         .filter(Boolean)
         .some((v) => v!.toLowerCase().includes(q))
     )
-  }, [clients, search])
+  }, [rows, search])
 
-  function openCreate(): void {
-    setEditing(null)
-    setFormOpen(true)
-  }
-
-  function openEdit(client: Client): void {
-    setEditing(client)
-    setFormOpen(true)
-  }
-
-  async function handleSubmit(input: ClientInput): Promise<void> {
+  async function handleSubmit(input: ContactInput): Promise<void> {
     if (editing) {
-      const updated = await updateClient(editing.id, input)
-      setClients((prev) => prev.map((c) => (c.id === updated.id ? updated : c)))
+      const updated = await update(editing.id, input)
+      setRows((prev) => prev.map((c) => (c.id === updated.id ? updated : c)))
     } else {
-      const created = await createClient(input)
-      setClients((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)))
+      const created = await create(input)
+      setRows((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)))
     }
     setFormOpen(false)
   }
@@ -75,24 +74,30 @@ export function Clients(): JSX.Element {
     setDeleteBusy(true)
     setDeleteError(null)
     try {
-      await deleteClient(deleting.id)
-      setClients((prev) => prev.filter((c) => c.id !== deleting.id))
+      await remove(deleting.id)
+      setRows((prev) => prev.filter((c) => c.id !== deleting.id))
       setDeleting(null)
     } catch (e) {
-      setDeleteError(e instanceof Error ? e.message : 'Failed to delete client')
+      setDeleteError(e instanceof Error ? e.message : `Failed to delete ${noun}`)
     } finally {
       setDeleteBusy(false)
     }
   }
 
   return (
-    <div className="mx-auto max-w-4xl p-6">
+    <div>
       <div className="mb-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Clients</h1>
-          <p className="text-sm text-slate-500">{clients.length} total</p>
-        </div>
-        <Button onClick={openCreate}>+ Add client</Button>
+        <p className="text-sm text-slate-500">
+          {rows.length} {rows.length === 1 ? noun : nounPlural}
+        </p>
+        <Button
+          onClick={() => {
+            setEditing(null)
+            setFormOpen(true)
+          }}
+        >
+          + Add {noun}
+        </Button>
       </div>
 
       <div className="mb-4">
@@ -106,7 +111,7 @@ export function Clients(): JSX.Element {
 
       {loading ? (
         <div className="py-16">
-          <FullscreenSpinner label="Loading clients…" />
+          <FullscreenSpinner label={`Loading ${nounPlural}…`} />
         </div>
       ) : error ? (
         <div className="rounded-lg bg-red-50 p-4 text-sm text-red-700 ring-1 ring-red-200">
@@ -134,7 +139,10 @@ export function Clients(): JSX.Element {
                   <td className="px-4 py-3 text-slate-600">{c.contact_number ?? '—'}</td>
                   <td className="px-4 py-3 text-right">
                     <button
-                      onClick={() => openEdit(c)}
+                      onClick={() => {
+                        setEditing(c)
+                        setFormOpen(true)
+                      }}
                       className="mr-3 text-brand-accent hover:underline"
                     >
                       Edit
@@ -154,7 +162,7 @@ export function Clients(): JSX.Element {
               {filtered.length === 0 && (
                 <tr>
                   <td colSpan={4} className="px-4 py-10 text-center text-slate-400">
-                    {search ? 'No clients match your search.' : 'No clients yet.'}
+                    {search ? `No ${nounPlural} match your search.` : `No ${nounPlural} yet.`}
                   </td>
                 </tr>
               )}
@@ -163,16 +171,17 @@ export function Clients(): JSX.Element {
         </div>
       )}
 
-      <ClientFormModal
+      <ContactFormModal
         open={formOpen}
-        client={editing}
+        noun={noun}
+        contact={editing}
         onClose={() => setFormOpen(false)}
         onSubmit={handleSubmit}
       />
 
       <Modal
         open={deleting !== null}
-        title="Delete client"
+        title={`Delete ${noun}`}
         onClose={() => setDeleting(null)}
         footer={
           <>
@@ -192,7 +201,7 @@ export function Clients(): JSX.Element {
       >
         <p className="text-sm text-slate-600">
           Delete <span className="font-semibold text-slate-900">{deleting?.name}</span>? This
-          can&apos;t be undone. Clients used on existing invoices can&apos;t be deleted.
+          can&apos;t be undone. {cap(nounPlural)} used on existing records can&apos;t be deleted.
         </p>
         {deleteError && (
           <div className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700 ring-1 ring-red-200">

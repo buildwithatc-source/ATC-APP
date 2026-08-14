@@ -5,7 +5,7 @@ import { AppLayout } from './components/AppLayout'
 import { FullscreenSpinner } from './components/FullscreenSpinner'
 import { Login } from './pages/Login'
 import { Dashboard } from './pages/dashboard/Dashboard'
-import { Clients } from './pages/clients/Clients'
+import { Contacts } from './pages/contacts/Contacts'
 import { Projects } from './pages/projects/Projects'
 import { ProjectDetail } from './pages/projects/ProjectDetail'
 import { Quotations } from './pages/quotations/Quotations'
@@ -33,7 +33,9 @@ function AppRoutes(): JSX.Element {
         }
       >
         <Route path="/" element={<Dashboard />} />
-        <Route path="/clients" element={<Clients />} />
+        <Route path="/contacts" element={<Contacts />} />
+        {/* Legacy path kept so old links/bookmarks still resolve. */}
+        <Route path="/clients" element={<Navigate to="/contacts" replace />} />
         <Route path="/quotations" element={<Quotations />} />
         <Route path="/quotations/:id" element={<QuotationDetail />} />
         <Route path="/projects" element={<Projects />} />

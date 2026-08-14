@@ -4,7 +4,8 @@ import { Button } from '@renderer/components/ui'
 import { Modal } from '@renderer/components/Modal'
 import { FullscreenSpinner } from '@renderer/components/FullscreenSpinner'
 import { getProject } from '@renderer/lib/db/projects'
-import { listBudgetCategories } from '@renderer/lib/db/budget'
+import { createBudgetCategory, listBudgetCategories } from '@renderer/lib/db/budget'
+import { createSupplier, listSuppliers } from '@renderer/lib/db/suppliers'
 import {
   createExpense,
   deleteExpense,
@@ -18,7 +19,8 @@ import type {
   BudgetCategory,
   Expense,
   ExpenseInput,
-  ProjectWithClient
+  ProjectWithClient,
+  Supplier
 } from '@renderer/lib/types'
 import { ExpenseFormModal } from './ExpenseFormModal'
 import { ExpenseImageButton } from './ExpenseImageButton'
@@ -39,6 +41,7 @@ export function ProjectDetail(): JSX.Element {
   const [project, setProject] = useState<ProjectWithClient | null>(null)
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [categories, setCategories] = useState<BudgetCategory[]>([])
+  const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [tab, setTab] = useState<Tab>('expenses')
@@ -51,14 +54,16 @@ export function ProjectDetail(): JSX.Element {
     if (!id) return
     ;(async () => {
       try {
-        const [pr, ex, cats] = await Promise.all([
+        const [pr, ex, cats, sups] = await Promise.all([
           getProject(id),
           listExpenses(id),
-          listBudgetCategories(id)
+          listBudgetCategories(id),
+          listSuppliers()
         ])
         setProject(pr)
         setExpenses(ex)
         setCategories(cats)
+        setSuppliers(sups)
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to load project')
       } finally {
@@ -71,6 +76,28 @@ export function ProjectDetail(): JSX.Element {
     const m = new Map(categories.map((c) => [c.id, c.name]))
     return (cid: string | null): string => (cid ? m.get(cid) ?? '—' : '—')
   }, [categories])
+
+  const supplierName = useMemo(() => {
+    const m = new Map(suppliers.map((s) => [s.id, s.name]))
+    return (sid: string | null): string => (sid ? m.get(sid) ?? '—' : '—')
+  }, [suppliers])
+
+  /** Add a budget category from the expense form (also appears in My budget). */
+  async function createCategoryInline(name: string): Promise<{ id: string; name: string }> {
+    if (!id) throw new Error('No project')
+    const created = await createBudgetCategory(id, { name, budget_amount: 0 })
+    setCategories((prev) => [...prev, created])
+    return { id: created.id, name: created.name }
+  }
+
+  /** Add a supplier from the expense form (also appears on the Contacts page). */
+  async function createSupplierInline(name: string): Promise<{ id: string; name: string }> {
+    const created = await createSupplier({ name, address: null, contact_number: null })
+    setSuppliers((prev) =>
+      [...prev, created].sort((a, b) => a.name.localeCompare(b.name))
+    )
+    return { id: created.id, name: created.name }
+  }
 
   const totals = useMemo(() => {
     const total = expenses.reduce((s, e) => s + Number(e.amount), 0)
@@ -217,6 +244,7 @@ export function ProjectDetail(): JSX.Element {
                   <th className="px-4 py-3 font-medium">Description</th>
                   <th className="w-12 px-4 py-3 text-center font-medium">Image</th>
                   <th className="px-4 py-3 font-medium">Category</th>
+                  <th className="px-4 py-3 font-medium">Supplier</th>
                   <th className="px-4 py-3 text-right font-medium">Cost</th>
                   <th className="px-4 py-3 font-medium">Billed</th>
                   <th className="w-20 px-4 py-3" />
@@ -234,6 +262,7 @@ export function ProjectDetail(): JSX.Element {
                       />
                     </td>
                     <td className="px-4 py-3 text-slate-500">{catName(e.category_id)}</td>
+                    <td className="px-4 py-3 text-slate-500">{supplierName(e.supplier_id)}</td>
                     <td className="px-4 py-3 text-right tabular-nums">{formatPeso(Number(e.amount))}</td>
                     <td className="px-4 py-3">
                       <button
@@ -266,7 +295,7 @@ export function ProjectDetail(): JSX.Element {
                 ))}
                 {expenses.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-4 py-10 text-center text-slate-400">
+                    <td colSpan={8} className="px-4 py-10 text-center text-slate-400">
                       No expenses yet. Add your first one.
                     </td>
                   </tr>
@@ -281,6 +310,9 @@ export function ProjectDetail(): JSX.Element {
         open={formOpen}
         expense={editing}
         categories={categories}
+        suppliers={suppliers}
+        onCreateCategory={createCategoryInline}
+        onCreateSupplier={createSupplierInline}
         onClose={() => {
           setFormOpen(false)
           setEditing(null)

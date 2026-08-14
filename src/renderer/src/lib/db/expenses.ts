@@ -30,6 +30,7 @@ export async function createExpense(projectId: string, input: ExpenseInput): Pro
     .insert({
       project_id: projectId,
       category_id: input.category_id || null,
+      supplier_id: input.supplier_id || null,
       description: input.description.trim() || null,
       amount: input.amount,
       expense_date: input.expense_date
@@ -45,6 +46,7 @@ export async function updateExpense(id: string, input: ExpenseInput): Promise<Ex
     .from('expenses')
     .update({
       category_id: input.category_id || null,
+      supplier_id: input.supplier_id || null,
       description: input.description.trim() || null,
       amount: input.amount,
       expense_date: input.expense_date

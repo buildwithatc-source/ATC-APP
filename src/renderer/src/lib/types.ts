@@ -15,6 +15,21 @@ export type ClientInput = {
   contact_number: string | null
 }
 
+/** Suppliers mirror clients exactly (name / address / contact number). */
+export type Supplier = {
+  id: string
+  name: string
+  address: string | null
+  contact_number: string | null
+  created_at: string
+}
+
+export type SupplierInput = ClientInput
+
+/** Shared shape for the Contacts page's generic list (clients + suppliers). */
+export type Contact = Client
+export type ContactInput = ClientInput
+
 export type ProjectStatus = 'active' | 'complete' | 'archived'
 
 export type Project = {
@@ -66,11 +81,14 @@ export type Expense = {
   invoice_id: string | null
   /** Optional Google Drive (or any) link to a photo/receipt for this expense. */
   image_url: string | null
+  /** Optional supplier this expense was purchased from. */
+  supplier_id: string | null
   created_at: string
 }
 
 export type ExpenseInput = {
   category_id: string | null
+  supplier_id: string | null
   description: string
   amount: number
   expense_date: string

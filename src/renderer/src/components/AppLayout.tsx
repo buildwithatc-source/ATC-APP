@@ -7,7 +7,7 @@ const nav = [
   { to: '/', label: 'Invoices', end: true },
   { to: '/quotations', label: 'Quotations', end: false },
   { to: '/projects', label: 'Projects', end: false },
-  { to: '/clients', label: 'Clients', end: false },
+  { to: '/contacts', label: 'Contacts', end: false },
   { to: '/settings', label: 'Settings', end: false }
 ]
 
