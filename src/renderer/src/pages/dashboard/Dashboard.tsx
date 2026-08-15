@@ -8,7 +8,8 @@ import { FullscreenSpinner } from '@renderer/components/FullscreenSpinner'
 import { StatusTabs } from '@renderer/components/StatusTabs'
 import { listClients } from '@renderer/lib/db/clients'
 import { deleteInvoice, listInvoices, setInvoiceStatus } from '@renderer/lib/db/invoices'
-import { formatPeso, formatTemplateDate } from '@renderer/lib/format'
+import { formatPeso, formatTemplateDate, todayManila } from '@renderer/lib/format'
+import { isOverdue } from '@renderer/lib/invoiceStatus'
 import type { InvoiceListRow, InvoiceStatus } from '@renderer/lib/types'
 import { StatTiles } from './StatTiles'
 import { InvoiceFilters, emptyFilters, type Filters } from './InvoiceFilters'
@@ -72,6 +73,7 @@ export function Dashboard(): JSX.Element {
   )
 
   const activeTab: StatusTab = filters.status === '' ? 'all' : filters.status
+  const today = todayManila()
 
   async function changeStatus(row: InvoiceListRow, status: InvoiceStatus): Promise<void> {
     const prev = row.status
@@ -159,15 +161,26 @@ export function Dashboard(): JSX.Element {
                     <td className="px-4 py-3 font-mono">{r.invoice_no}</td>
                     <td className="px-4 py-3">{r.clients?.name ?? '—'}</td>
                     <td className="px-4 py-3 text-slate-600">{formatTemplateDate(r.invoice_date)}</td>
-                    <td className="px-4 py-3 text-slate-600">
+                    <td
+                      className={`px-4 py-3 ${
+                        isOverdue(r, today) ? 'font-medium text-red-600' : 'text-slate-600'
+                      }`}
+                    >
                       {formatTemplateDate(r.due_date) || '—'}
                     </td>
                     <td className="px-4 py-3">
-                      <InlineStatusSelect
-                        value={r.status}
-                        busy={statusBusy === r.id}
-                        onChange={(s) => void changeStatus(r, s)}
-                      />
+                      <div className="flex items-center gap-2">
+                        <InlineStatusSelect
+                          value={r.status}
+                          busy={statusBusy === r.id}
+                          onChange={(s) => void changeStatus(r, s)}
+                        />
+                        {isOverdue(r, today) && (
+                          <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                            Overdue
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums">{formatPeso(Number(r.total))}</td>
                     <td className="px-4 py-3 text-right">
