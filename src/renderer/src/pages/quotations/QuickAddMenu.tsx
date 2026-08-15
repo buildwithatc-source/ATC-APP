@@ -32,7 +32,8 @@ export function QuickAddMenu({ onAddItems }: Props): JSX.Element {
   function toggle(name: string): void {
     setChecked((prev) => {
       const next = new Set(prev)
-      next.has(name) ? next.delete(name) : next.add(name)
+      if (next.has(name)) next.delete(name)
+      else next.add(name)
       return next
     })
   }

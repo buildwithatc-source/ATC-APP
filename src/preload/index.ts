@@ -52,8 +52,8 @@ if (process.contextIsolated) {
   }
 } else {
   // Fallback for the (unused) non-isolated case.
-  // @ts-ignore (define in dts)
+  // @ts-ignore (electron/api are declared in the preload .d.ts)
   window.electron = electronAPI
-  // @ts-ignore (define in dts)
+  // @ts-ignore (electron/api are declared in the preload .d.ts)
   window.api = api
 }
