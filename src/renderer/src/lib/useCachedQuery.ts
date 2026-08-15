@@ -9,6 +9,10 @@ import { useCallback, useEffect, useRef, useState } from 'react'
  * navigation feels immediate. `setData` writes through to the cache so
  * optimistic mutations stay consistent across pages (e.g. the shared 'clients'
  * key). Cache lives for the app session; call clearQueryCache() on sign-out.
+ *
+ * `initialData` is the value returned before the first load resolves, so `data`
+ * is always `T` (never undefined) — call sites read it directly and mutate it
+ * without `?? []` guards. Use `loading` to distinguish "not yet loaded".
  */
 
 type Entry = { data: unknown; ts: number }
@@ -20,8 +24,8 @@ export function clearQueryCache(): void {
 }
 
 type Result<T> = {
-  data: T | undefined
-  setData: (next: T | ((prev: T | undefined) => T)) => void
+  data: T
+  setData: (next: T | ((prev: T) => T)) => void
   loading: boolean
   error: string | null
   reload: () => Promise<void>
@@ -30,12 +34,13 @@ type Result<T> = {
 export function useCachedQuery<T>(
   key: string,
   fetcher: () => Promise<T>,
+  initialData: T,
   opts?: { staleTime?: number }
 ): Result<T> {
   const staleTime = opts?.staleTime ?? 15000
   const cached = cache.get(key)
 
-  const [data, setDataState] = useState<T | undefined>(cached?.data as T | undefined)
+  const [data, setDataState] = useState<T>(cached ? (cached.data as T) : initialData)
   const [loading, setLoading] = useState(!cached)
   const [error, setError] = useState<string | null>(null)
 
@@ -45,10 +50,9 @@ export function useCachedQuery<T>(
   fetcherRef.current = fetcher
 
   const setData = useCallback(
-    (next: T | ((prev: T | undefined) => T)) => {
+    (next: T | ((prev: T) => T)) => {
       setDataState((prev) => {
-        const val =
-          typeof next === 'function' ? (next as (p: T | undefined) => T)(prev) : next
+        const val = typeof next === 'function' ? (next as (p: T) => T)(prev) : next
         cache.set(key, { data: val, ts: Date.now() })
         return val
       })
@@ -67,8 +71,11 @@ export function useCachedQuery<T>(
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [key])
 
+  // Runs on mount and whenever `key` changes. On first mount it largely mirrors
+  // the useState initializer (harmless); its real job is re-seeding + revalidating
+  // when the key switches without a remount.
   useEffect(() => {
     const c = cache.get(key)
     if (!c) {
@@ -76,7 +83,6 @@ export function useCachedQuery<T>(
       void reload()
       return
     }
-    // Paint cached data immediately; revalidate only if it's gone stale.
     setDataState(c.data as T)
     setLoading(false)
     if (Date.now() - c.ts > staleTime) void reload()

@@ -42,17 +42,17 @@ export function ProjectDetail(): JSX.Element {
   const navigate = useNavigate()
   const { toast } = useToast()
 
-  const projectQ = useCachedQuery(`project:${pid}`, () => getProject(pid))
-  const expensesQ = useCachedQuery(`expenses:${pid}`, () => listExpenses(pid))
-  const categoriesQ = useCachedQuery(`categories:${pid}`, () => listBudgetCategories(pid))
-  const suppliersQ = useCachedQuery('suppliers', listSuppliers)
-  const paymentQ = useCachedQuery('paymentMethods', listPaymentMethods)
+  const projectQ = useCachedQuery<ProjectWithClient | null>(`project:${pid}`, () => getProject(pid), null)
+  const expensesQ = useCachedQuery(`expenses:${pid}`, () => listExpenses(pid), [])
+  const categoriesQ = useCachedQuery(`categories:${pid}`, () => listBudgetCategories(pid), [])
+  const suppliersQ = useCachedQuery('suppliers', listSuppliers, [])
+  const paymentQ = useCachedQuery('paymentMethods', listPaymentMethods, [])
 
-  const project = projectQ.data ?? null
-  const expenses = expensesQ.data ?? []
-  const categories = categoriesQ.data ?? []
-  const suppliers = suppliersQ.data ?? []
-  const paymentMethods = (paymentQ.data ?? []).map((m) => m.name)
+  const project = projectQ.data
+  const expenses = expensesQ.data
+  const categories = categoriesQ.data
+  const suppliers = suppliersQ.data
+  const paymentMethods = paymentQ.data.map((m) => m.name)
   const loading = projectQ.loading || expensesQ.loading || categoriesQ.loading
   const error = projectQ.error ?? expensesQ.error ?? categoriesQ.error
 
@@ -75,37 +75,34 @@ export function ProjectDetail(): JSX.Element {
   async function createCategoryInline(name: string): Promise<{ id: string; name: string }> {
     if (!pid) throw new Error('No project')
     const created = await createBudgetCategory(pid, { name, budget_amount: 0 })
-    categoriesQ.setData((prev) => [...(prev ?? []), created])
+    categoriesQ.setData((prev) => [...prev, created])
     return { id: created.id, name: created.name }
   }
 
   /** Delete a budget category from the expense form (its expenses go uncategorized). */
   async function deleteCategoryInline(categoryId: string): Promise<void> {
     await deleteBudgetCategory(categoryId)
-    categoriesQ.setData((prev) => (prev ?? []).filter((c) => c.id !== categoryId))
+    categoriesQ.setData((prev) => prev.filter((c) => c.id !== categoryId))
     expensesQ.setData((prev) =>
-      (prev ?? []).map((e) => (e.category_id === categoryId ? { ...e, category_id: null } : e))
+      prev.map((e) => (e.category_id === categoryId ? { ...e, category_id: null } : e))
     )
   }
 
   /** Add a supplier from the expense form (also appears on the Contacts page). */
   async function createSupplierInline(name: string): Promise<{ id: string; name: string }> {
     const created = await createSupplier({ name, address: null, contact_number: null })
-    suppliersQ.setData((prev) =>
-      [...(prev ?? []), created].sort((a, b) => a.name.localeCompare(b.name))
-    )
+    suppliersQ.setData((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)))
     return { id: created.id, name: created.name }
   }
 
   /** Add a payment method from the expense form (persisted for reuse). */
   async function createPaymentMethodInline(name: string): Promise<{ id: string; name: string }> {
     const created = await createPaymentMethod(name)
-    paymentQ.setData((prev) => {
-      const list = prev ?? []
-      return list.some((m) => m.name.toLowerCase() === created.name.toLowerCase())
-        ? list
-        : [...list, created].sort((a, b) => a.name.localeCompare(b.name))
-    })
+    paymentQ.setData((prev) =>
+      prev.some((m) => m.name.toLowerCase() === created.name.toLowerCase())
+        ? prev
+        : [...prev, created].sort((a, b) => a.name.localeCompare(b.name))
+    )
     return { id: created.name, name: created.name }
   }
 
@@ -119,10 +116,10 @@ export function ProjectDetail(): JSX.Element {
     if (!pid) return
     if (editing) {
       const updated = await updateExpense(editing.id, input)
-      expensesQ.setData((prev) => (prev ?? []).map((e) => (e.id === updated.id ? updated : e)))
+      expensesQ.setData((prev) => prev.map((e) => (e.id === updated.id ? updated : e)))
     } else {
       const created = await createExpense(pid, input)
-      expensesQ.setData((prev) => [created, ...(prev ?? [])])
+      expensesQ.setData((prev) => [created, ...prev])
     }
     setFormOpen(false)
     toast(editing ? 'Expense updated' : 'Expense added')
@@ -131,14 +128,12 @@ export function ProjectDetail(): JSX.Element {
 
   async function toggleInvoiced(exp: Expense): Promise<void> {
     const next = !exp.invoiced
-    expensesQ.setData((prev) =>
-      (prev ?? []).map((e) => (e.id === exp.id ? { ...e, invoiced: next } : e))
-    )
+    expensesQ.setData((prev) => prev.map((e) => (e.id === exp.id ? { ...e, invoiced: next } : e)))
     try {
       await setExpensesInvoiced([exp.id], next, null)
     } catch {
       expensesQ.setData((prev) =>
-        (prev ?? []).map((e) => (e.id === exp.id ? { ...e, invoiced: exp.invoiced } : e))
+        prev.map((e) => (e.id === exp.id ? { ...e, invoiced: exp.invoiced } : e))
       )
     }
   }
@@ -146,7 +141,7 @@ export function ProjectDetail(): JSX.Element {
   async function changeImage(exp: Expense, imageUrl: string | null): Promise<void> {
     await setExpenseImage(exp.id, imageUrl)
     expensesQ.setData((prev) =>
-      (prev ?? []).map((e) => (e.id === exp.id ? { ...e, image_url: imageUrl } : e))
+      prev.map((e) => (e.id === exp.id ? { ...e, image_url: imageUrl } : e))
     )
   }
 
@@ -154,7 +149,7 @@ export function ProjectDetail(): JSX.Element {
     if (!deleting) return
     try {
       await deleteExpense(deleting.id)
-      expensesQ.setData((prev) => (prev ?? []).filter((e) => e.id !== deleting.id))
+      expensesQ.setData((prev) => prev.filter((e) => e.id !== deleting.id))
       setDeleting(null)
       toast('Expense deleted')
     } catch (e) {
@@ -235,7 +230,7 @@ export function ProjectDetail(): JSX.Element {
           categories={categories}
           onCategoriesChanged={(cats) => categoriesQ.setData(cats)}
           onContractBudgetChanged={(amount) =>
-            projectQ.setData((p) => ({ ...(p as ProjectWithClient), contract_budget: amount }))
+            projectQ.setData((p) => (p ? { ...p, contract_budget: amount } : p))
           }
         />
       ) : (

@@ -1,4 +1,12 @@
-import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from 'react'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode
+} from 'react'
 
 type ToastType = 'success' | 'error' | 'info'
 type ToastItem = { id: number; message: string; type: ToastType }
@@ -26,8 +34,10 @@ export function ToastProvider({ children }: { children: ReactNode }): JSX.Elemen
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3200)
   }, [])
 
+  const value = useMemo(() => ({ toast }), [toast])
+
   return (
-    <ToastContext.Provider value={{ toast }}>
+    <ToastContext.Provider value={value}>
       {children}
       <style>{`@keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}`}</style>
       <div className="pointer-events-none fixed bottom-4 right-4 z-[100] flex flex-col items-end gap-2">

@@ -26,19 +26,18 @@ const TABS: { value: QuotationStatus; label: string }[] = [
 export function Quotations(): JSX.Element {
   const navigate = useNavigate()
   const { toast } = useToast()
-  const quotationsQ = useCachedQuery('quotations', listQuotations)
-  const clientsQ = useCachedQuery('clients', listClients)
-  const quotations = quotationsQ.data ?? []
-  const clients = clientsQ.data ?? []
+  const quotationsQ = useCachedQuery('quotations', listQuotations, [])
+  const clientsQ = useCachedQuery('clients', listClients, [])
+  const quotations = quotationsQ.data
+  const clients = clientsQ.data
   const loading = quotationsQ.loading
+  const error = quotationsQ.error
   const [search, setSearch] = useState('')
   const [tab, setTab] = useState<QuotationStatus>('active')
   const [formOpen, setFormOpen] = useState(false)
   const [statusBusy, setStatusBusy] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<QuotationWithClient | null>(null)
   const [deleteBusy, setDeleteBusy] = useState(false)
-  const [actionError, setActionError] = useState<string | null>(null)
-  const error = quotationsQ.error ?? actionError
 
   const counts = useMemo(() => {
     const c: Record<QuotationStatus, number> = { active: 0, complete: 0, archived: 0 }
@@ -65,13 +64,11 @@ export function Quotations(): JSX.Element {
   async function changeStatus(x: QuotationWithClient, status: QuotationStatus): Promise<void> {
     const prev = x.status
     setStatusBusy(x.id)
-    quotationsQ.setData((qs) => (qs ?? []).map((q) => (q.id === x.id ? { ...q, status } : q)))
+    quotationsQ.setData((qs) => qs.map((q) => (q.id === x.id ? { ...q, status } : q)))
     try {
       await setQuotationStatus(x.id, status)
     } catch {
-      quotationsQ.setData((qs) =>
-        (qs ?? []).map((q) => (q.id === x.id ? { ...q, status: prev } : q))
-      )
+      quotationsQ.setData((qs) => qs.map((q) => (q.id === x.id ? { ...q, status: prev } : q)))
     } finally {
       setStatusBusy(null)
     }
@@ -80,14 +77,12 @@ export function Quotations(): JSX.Element {
   async function confirmDelete(): Promise<void> {
     if (!deleting) return
     setDeleteBusy(true)
-    setActionError(null)
     try {
       await deleteQuotation(deleting.id)
-      quotationsQ.setData((qs) => (qs ?? []).filter((x) => x.id !== deleting.id))
+      quotationsQ.setData((qs) => qs.filter((x) => x.id !== deleting.id))
       setDeleting(null)
       toast('Quotation deleted')
-    } catch (e) {
-      setActionError(e instanceof Error ? e.message : 'Failed to delete quotation')
+    } catch {
       toast('Could not delete quotation', 'error')
     } finally {
       setDeleteBusy(false)

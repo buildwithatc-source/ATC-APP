@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from './AuthContext'
 import { useLockSettings } from '@renderer/lib/lockSettings'
-import { Button } from '@renderer/components/ui'
+import { Button, TextField } from '@renderer/components/ui'
 import logo from '@renderer/assets/logo.png'
 
 /**
@@ -34,13 +34,14 @@ export function IdleLock(): JSX.Element | null {
     ]
     events.forEach((e) => window.addEventListener(e, bump, { passive: true }))
     const timer = setInterval(() => {
-      if (!locked && Date.now() - lastActivity.current > idleMs) setLocked(true)
+      // setLocked(true) is a no-op when already locked, so no need to read `locked` here.
+      if (Date.now() - lastActivity.current > idleMs) setLocked(true)
     }, 15000)
     return () => {
       events.forEach((e) => window.removeEventListener(e, bump))
       clearInterval(timer)
     }
-  }, [locked, minutes])
+  }, [minutes])
 
   async function unlock(e: React.FormEvent): Promise<void> {
     e.preventDefault()
@@ -71,13 +72,13 @@ export function IdleLock(): JSX.Element | null {
           Locked after inactivity. Enter your password to continue.
         </p>
         <form onSubmit={(e) => void unlock(e)} className="space-y-3">
-          <input
+          <TextField
+            label="Password"
             autoFocus
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Password"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-accent focus:ring-2 focus:ring-brand-accent/30"
           />
           {error && <p className="text-sm text-red-600">{error}</p>}
           <Button type="submit" loading={busy} className="w-full justify-center">

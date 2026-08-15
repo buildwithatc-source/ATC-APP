@@ -27,17 +27,16 @@ const STATUS_TABS: { value: StatusTab; label: string }[] = [
 export function Dashboard(): JSX.Element {
   const navigate = useNavigate()
   const { toast } = useToast()
-  const invoicesQ = useCachedQuery('invoices', listInvoices)
-  const clientsQ = useCachedQuery('clients', listClients)
-  const rows = invoicesQ.data ?? []
-  const clients = clientsQ.data ?? []
+  const invoicesQ = useCachedQuery('invoices', listInvoices, [])
+  const clientsQ = useCachedQuery('clients', listClients, [])
+  const rows = invoicesQ.data
+  const clients = clientsQ.data
   const loading = invoicesQ.loading
   const error = invoicesQ.error
   const [filters, setFilters] = useState<Filters>(emptyFilters)
   const [statusBusy, setStatusBusy] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<InvoiceListRow | null>(null)
   const [deleteBusy, setDeleteBusy] = useState(false)
-  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   // Rows matching everything EXCEPT the status tab (so tab counts reflect the
   // other active filters).
@@ -78,12 +77,12 @@ export function Dashboard(): JSX.Element {
     const prev = row.status
     setStatusBusy(row.id)
     // Optimistic update.
-    invoicesQ.setData((rs) => (rs ?? []).map((r) => (r.id === row.id ? { ...r, status } : r)))
+    invoicesQ.setData((rs) => rs.map((r) => (r.id === row.id ? { ...r, status } : r)))
     try {
       await setInvoiceStatus(row.id, status)
     } catch {
       // Revert on failure.
-      invoicesQ.setData((rs) => (rs ?? []).map((r) => (r.id === row.id ? { ...r, status: prev } : r)))
+      invoicesQ.setData((rs) => rs.map((r) => (r.id === row.id ? { ...r, status: prev } : r)))
     } finally {
       setStatusBusy(null)
     }
@@ -92,14 +91,12 @@ export function Dashboard(): JSX.Element {
   async function confirmDelete(): Promise<void> {
     if (!deleting) return
     setDeleteBusy(true)
-    setDeleteError(null)
     try {
       await deleteInvoice(deleting.id)
-      invoicesQ.setData((rs) => (rs ?? []).filter((r) => r.id !== deleting.id))
+      invoicesQ.setData((rs) => rs.filter((r) => r.id !== deleting.id))
       setDeleting(null)
       toast('Invoice deleted')
-    } catch (e) {
-      setDeleteError(e instanceof Error ? e.message : 'Failed to delete invoice')
+    } catch {
       toast('Could not delete invoice', 'error')
     } finally {
       setDeleteBusy(false)
@@ -177,7 +174,6 @@ export function Dashboard(): JSX.Element {
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
-                          setDeleteError(null)
                           setDeleting(r)
                         }}
                         className="text-red-600 hover:underline"
@@ -228,11 +224,6 @@ export function Dashboard(): JSX.Element {
           {formatPeso(Number(deleting?.total ?? 0))})? This can&apos;t be undone. Any expenses it
           billed will be freed for re-invoicing.
         </p>
-        {deleteError && (
-          <div className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700 ring-1 ring-red-200">
-            {deleteError}
-          </div>
-        )}
       </Modal>
     </div>
   )

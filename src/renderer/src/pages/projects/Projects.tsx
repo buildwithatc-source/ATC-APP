@@ -28,21 +28,20 @@ const TABS: { value: ProjectStatus; label: string }[] = [
 export function Projects(): JSX.Element {
   const navigate = useNavigate()
   const { toast } = useToast()
-  const projectsQ = useCachedQuery('projects', listProjects)
-  const clientsQ = useCachedQuery('clients', listClients)
-  const totalsQ = useCachedQuery('expenseTotals', getExpenseTotalsByProject)
-  const projects = projectsQ.data ?? []
-  const clients = clientsQ.data ?? []
-  const expenseTotals = totalsQ.data ?? {}
+  const projectsQ = useCachedQuery('projects', listProjects, [])
+  const clientsQ = useCachedQuery('clients', listClients, [])
+  const totalsQ = useCachedQuery('expenseTotals', getExpenseTotalsByProject, {})
+  const projects = projectsQ.data
+  const clients = clientsQ.data
+  const expenseTotals = totalsQ.data
   const loading = projectsQ.loading
+  const error = projectsQ.error
   const [search, setSearch] = useState('')
   const [tab, setTab] = useState<ProjectStatus>('active')
   const [formOpen, setFormOpen] = useState(false)
   const [statusBusy, setStatusBusy] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<ProjectWithClient | null>(null)
   const [deleteBusy, setDeleteBusy] = useState(false)
-  const [actionError, setActionError] = useState<string | null>(null)
-  const error = projectsQ.error ?? actionError
 
   const counts = useMemo(() => {
     const c: Record<ProjectStatus, number> = { active: 0, complete: 0, archived: 0 }
@@ -70,11 +69,11 @@ export function Projects(): JSX.Element {
   async function changeStatus(p: ProjectWithClient, status: ProjectStatus): Promise<void> {
     const prev = p.status
     setStatusBusy(p.id)
-    projectsQ.setData((ps) => (ps ?? []).map((x) => (x.id === p.id ? { ...x, status } : x)))
+    projectsQ.setData((ps) => ps.map((x) => (x.id === p.id ? { ...x, status } : x)))
     try {
       await setProjectStatus(p.id, status)
     } catch {
-      projectsQ.setData((ps) => (ps ?? []).map((x) => (x.id === p.id ? { ...x, status: prev } : x)))
+      projectsQ.setData((ps) => ps.map((x) => (x.id === p.id ? { ...x, status: prev } : x)))
     } finally {
       setStatusBusy(null)
     }
@@ -83,14 +82,12 @@ export function Projects(): JSX.Element {
   async function confirmDelete(): Promise<void> {
     if (!deleting) return
     setDeleteBusy(true)
-    setActionError(null)
     try {
       await deleteProject(deleting.id)
-      projectsQ.setData((ps) => (ps ?? []).filter((x) => x.id !== deleting.id))
+      projectsQ.setData((ps) => ps.filter((x) => x.id !== deleting.id))
       setDeleting(null)
       toast('Project deleted')
-    } catch (e) {
-      setActionError(e instanceof Error ? e.message : 'Failed to delete project')
+    } catch {
       toast('Could not delete project', 'error')
     } finally {
       setDeleteBusy(false)

@@ -23,8 +23,8 @@ type Props = {
 /** Generic contact table (search, add, edit, delete) shared by clients & suppliers. */
 export function ContactList({ noun, nounPlural, list, create, update, remove }: Props): JSX.Element {
   const { toast } = useToast()
-  const query = useCachedQuery<Contact[]>(nounPlural, list)
-  const rows = query.data ?? []
+  const query = useCachedQuery<Contact[]>(nounPlural, list, [])
+  const rows = query.data
   const loading = query.loading
   const error = query.error
   const [search, setSearch] = useState('')
@@ -33,7 +33,6 @@ export function ContactList({ noun, nounPlural, list, create, update, remove }: 
   const [editing, setEditing] = useState<Contact | null>(null)
   const [deleting, setDeleting] = useState<Contact | null>(null)
   const [deleteBusy, setDeleteBusy] = useState(false)
-  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -48,12 +47,10 @@ export function ContactList({ noun, nounPlural, list, create, update, remove }: 
   async function handleSubmit(input: ContactInput): Promise<void> {
     if (editing) {
       const updated = await update(editing.id, input)
-      query.setData((prev) => (prev ?? []).map((c) => (c.id === updated.id ? updated : c)))
+      query.setData((prev) => prev.map((c) => (c.id === updated.id ? updated : c)))
     } else {
       const created = await create(input)
-      query.setData((prev) =>
-        [...(prev ?? []), created].sort((a, b) => a.name.localeCompare(b.name))
-      )
+      query.setData((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)))
     }
     setFormOpen(false)
     toast(`${cap(noun)} ${editing ? 'updated' : 'added'}`)
@@ -62,14 +59,12 @@ export function ContactList({ noun, nounPlural, list, create, update, remove }: 
   async function confirmDelete(): Promise<void> {
     if (!deleting) return
     setDeleteBusy(true)
-    setDeleteError(null)
     try {
       await remove(deleting.id)
-      query.setData((prev) => (prev ?? []).filter((c) => c.id !== deleting.id))
+      query.setData((prev) => prev.filter((c) => c.id !== deleting.id))
       setDeleting(null)
       toast(`${cap(noun)} deleted`)
-    } catch (e) {
-      setDeleteError(e instanceof Error ? e.message : `Failed to delete ${noun}`)
+    } catch {
       toast(`Could not delete ${noun}`, 'error')
     } finally {
       setDeleteBusy(false)
@@ -140,10 +135,7 @@ export function ContactList({ noun, nounPlural, list, create, update, remove }: 
                       Edit
                     </button>
                     <button
-                      onClick={() => {
-                        setDeleteError(null)
-                        setDeleting(c)
-                      }}
+                      onClick={() => setDeleting(c)}
                       className="text-red-600 hover:underline"
                     >
                       Delete
@@ -195,11 +187,6 @@ export function ContactList({ noun, nounPlural, list, create, update, remove }: 
           Delete <span className="font-semibold text-slate-900">{deleting?.name}</span>? This
           can&apos;t be undone. {cap(nounPlural)} used on existing records can&apos;t be deleted.
         </p>
-        {deleteError && (
-          <div className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700 ring-1 ring-red-200">
-            {deleteError}
-          </div>
-        )}
       </Modal>
     </div>
   )
