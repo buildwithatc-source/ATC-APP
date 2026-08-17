@@ -12,9 +12,38 @@ body,
   height: 100%;
 }
 
+html {
+  /* Stop mobile WebViews from auto-inflating text in landscape, so type stays
+     the same size as the Electron build. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
+  /* Native-app feel on the tablet: no grey tap flash, no rubber-band overscroll. */
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
   @apply bg-slate-100 text-slate-900 font-sans antialiased;
+}
+
+/* Touch devices (the tablet) only: enforce ~44px minimum hit targets on
+   interactive controls. Gated on `pointer: coarse` so the desktop (mouse)
+   build stays pixel-identical to Electron. */
+@media (pointer: coarse) {
+  button,
+  [role='button'],
+  select,
+  textarea,
+  input:not([type='checkbox']):not([type='radio']):not([type='range']) {
+    min-height: 44px;
+  }
+  /* Sidebar / nav links render as <a>; center their text in the taller box. */
+  nav a {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
 }
 
 /* Remove the up/down spinner arrows on all number inputs. */

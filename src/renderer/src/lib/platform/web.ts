@@ -1,3 +1,8 @@
+import { Capacitor } from '@capacitor/core'
+import { App } from '@capacitor/app'
+import { Browser } from '@capacitor/browser'
+import { Preferences } from '@capacitor/preferences'
+import { ScreenOrientation } from '@capacitor/screen-orientation'
 import type { UpdateStatus } from '@shared/update'
 import type { Platform } from './types'
 
@@ -6,32 +11,46 @@ import type { Platform } from './types'
 const NO_UPDATES: UpdateStatus = { state: 'dev' }
 
 /**
- * Web / mobile (Capacitor) implementation. Today it uses plain browser APIs so
- * the app is fully runnable in a WebView without extra native deps. The
- * Capacitor plugin wiring slots in at the TODO markers:
- *   - session  -> @capacitor/preferences (or a secure-storage plugin)
- *   - pdf      -> jsPDF/html2pdf + @capacitor/share / @capacitor/filesystem
- *   - app      -> @capacitor/app (App.getInfo) + Capacitor.getPlatform()
+ * Web / mobile (Capacitor) implementation. Backed by Capacitor plugins that
+ * each ship a browser fallback, so this same module runs in three places:
+ * a plain browser (the `dist-web` build), an Android WebView, and iOS.
+ *   - session -> @capacitor/preferences (native pref store; localStorage on web)
+ *   - app     -> @capacitor/app + Capacitor.getPlatform()
+ *   - links   -> @capacitor/browser (in-app browser on native; new tab on web)
+ *
+ * PDF still uses the browser print dialog ("Save as PDF"); a real native export
+ * (jsPDF + @capacitor/share/filesystem) is the remaining follow-up, marked below.
  */
 export const webPlatform: Platform = {
   isDesktop: false,
+  // The app is a fixed desktop layout (persistent sidebar + content); on the
+  // target tablet (Honor Pad 10) landscape ~= the Electron window, so we lock
+  // to landscape to keep it pixel-identical to the desktop build. No-op on web.
+  async init() {
+    if (!Capacitor.isNativePlatform()) return
+    try {
+      await ScreenOrientation.lock({ orientation: 'landscape' })
+    } catch {
+      // Orientation lock is best-effort; ignore if unsupported on the device.
+    }
+  },
   session: {
-    // TODO(capacitor): replace localStorage with @capacitor/preferences.
     async get(key) {
-      return localStorage.getItem(key)
+      const { value } = await Preferences.get({ key })
+      return value ?? null
     },
     async set(key, value) {
-      localStorage.setItem(key, value)
+      await Preferences.set({ key, value })
     },
     async remove(key) {
-      localStorage.removeItem(key)
+      await Preferences.remove({ key })
     }
   },
   pdf: {
     supported: false,
     // Fallback: open the self-contained HTML and invoke the browser print
     // dialog, which offers "Save as PDF". TODO(capacitor): render to a real PDF
-    // with jsPDF/html2pdf and share via @capacitor/share.
+    // with jsPDF/html2pdf and share via @capacitor/share on native.
     async export(html) {
       openPrintable(html)
       return { ok: true }
@@ -57,16 +76,27 @@ export const webPlatform: Platform = {
     }
   },
   app: {
-    // TODO(capacitor): App.getInfo().version + Capacitor.getPlatform().
     async getVersion() {
+      // App.getInfo() is native-only; on web there's no package manifest to read.
+      if (Capacitor.isNativePlatform()) {
+        try {
+          const info = await App.getInfo()
+          return info.version
+        } catch {
+          // Fall through to the web label if the plugin is unavailable.
+        }
+      }
       return 'web'
     },
     async getPlatform() {
-      return 'web'
+      // 'web' | 'android' | 'ios'
+      return Capacitor.getPlatform()
     }
   },
   openExternal(url) {
-    window.open(url, '_blank')
+    // Browser.open uses an in-app browser (Custom Tab / SafariVC) on native and
+    // opens a new tab on web. Fire-and-forget; the Platform signature is sync.
+    void Browser.open({ url }).catch(() => window.open(url, '_blank'))
   }
 }
 

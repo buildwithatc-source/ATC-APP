@@ -2,7 +2,13 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Tablet (Capacitor): lock zoom so it stays pixel-identical to desktop;
+         viewport-fit=cover lets us pad around any camera cutout in landscape.
+         On Electron these extra params are inert (no pinch-zoom there). -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
     <!-- Lock the renderer down: no remote content, only self + Supabase over https. -->
     <meta
       http-equiv="Content-Security-Policy"

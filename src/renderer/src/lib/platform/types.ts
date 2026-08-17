@@ -18,6 +18,12 @@ export interface Platform {
   /** True on the Electron desktop build (the preload bridge is present). */
   isDesktop: boolean
 
+  /**
+   * One-time host setup run at app startup (before React renders). Desktop
+   * leaves it undefined; the web/mobile shell uses it to lock orientation etc.
+   */
+  init?(): void | Promise<void>
+
   /** Persistent key/value store backing the Supabase auth session. */
   session: {
     get(key: string): Promise<string | null>
