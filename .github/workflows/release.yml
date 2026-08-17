@@ -3,10 +3,11 @@ name: Release
 # Build and publish installers to GitHub Releases when a version tag is pushed.
 # Cut a release with:  npm version patch && git push --follow-tags
 #
-# Each platform builds its installer WITHOUT publishing and uploads the files as
-# CI artifacts. A single final job then creates the GitHub Release with all
-# files at once. This avoids the multi-job clobbering you get when two
-# electron-builder jobs publish to the same release concurrently.
+# The `build` matrix produces the Windows/Mac desktop installers and the
+# `android` job produces a sideloadable APK for the tablet — each WITHOUT
+# publishing, uploading its files as CI artifacts. A single final `publish` job
+# then creates the GitHub Release with everything at once. This avoids the
+# multi-job clobbering you get when jobs publish to the same release concurrently.
 on:
   push:
     tags:
@@ -73,8 +74,71 @@ jobs:
             release/*/*.zip.blockmap
             release/*/latest*.yml
 
+  android:
+    # Builds a sideloadable debug APK for the tablet (Honor Pad 10) and uploads
+    # it as an artifact so the publish job attaches it to the same Release.
+    # Debug build = no signing keystore needed; installable via "unknown apps".
+    #
+    # continue-on-error: the APK is a bonus attached to the release — a failure
+    # here must NOT block the Windows/Mac installers. publish still runs; it just
+    # won't find an APK artifact to attach that run. (The job still shows its
+    # real status in the Actions UI so a failure is visible.)
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install SDK packages (API 36)
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create .env (Supabase build-time config)
+        # Same public client credentials the desktop build uses (see build job).
+        run: |
+          echo "VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL || 'https://wsupsihybxzlmlezvape.supabase.co' }}" > .env
+          echo "VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY || 'sb_publishable_oFltZ1ncn_AbGnxJqWwHWQ_1k1dNFYW' }}" >> .env
+
+      - name: Build web bundle
+        run: npm run build:web
+
+      - name: Sync Capacitor Android
+        run: npx cap sync android
+
+      - name: Build debug APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Name APK by version
+        run: |
+          mkdir -p apk-out
+          cp android/app/build/outputs/apk/debug/app-debug.apk "apk-out/ATC-Ledger-${{ github.ref_name }}.apk"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          if-no-files-found: error
+          path: apk-out/*.apk
+
   publish:
-    needs: build
+    needs: [build, android]
     runs-on: ubuntu-latest
     permissions:
       contents: write
