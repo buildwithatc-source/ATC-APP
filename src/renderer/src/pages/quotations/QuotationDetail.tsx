@@ -22,6 +22,7 @@ import {
   updateQuotationNotes
 } from '@renderer/lib/db/quotations'
 import { getBusiness } from '@renderer/lib/db/business'
+import { platform } from '@renderer/lib/platform'
 import type { Business, QuotationItem, QuotationItemInput, QuotationWithClient } from '@renderer/lib/types'
 import { QuotationItemFormModal } from './QuotationItemFormModal'
 import { QuickAddMenu } from './QuickAddMenu'
@@ -101,7 +102,7 @@ export function QuotationDetail(): JSX.Element {
     setError(null)
     setExporting(true)
     try {
-      const res = await window.api.pdf.export(
+      const res = await platform.pdf.export(
         renderQuotationHtml(buildSheet()),
         quotationPdfName(quotation?.code ?? '')
       )
@@ -115,7 +116,7 @@ export function QuotationDetail(): JSX.Element {
     setError(null)
     setPrinting(true)
     try {
-      const res = await window.api.pdf.print(renderQuotationHtml(buildSheet()))
+      const res = await platform.pdf.print(renderQuotationHtml(buildSheet()))
       if (!res.ok && res.error) setError(res.error)
     } finally {
       setPrinting(false)

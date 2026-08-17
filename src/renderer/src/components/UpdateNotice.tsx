@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { UpdateStatus } from '@shared/update'
+import { platform } from '@renderer/lib/platform'
 import { Button } from './ui'
 import { UpdatingOverlay, useInstallUpdate } from './UpdatingOverlay'
 
@@ -15,9 +16,13 @@ export function UpdateNotice(): JSX.Element | null {
   const { installing, install } = useInstallUpdate()
 
   useEffect(() => {
-    window.api.updates.getStatus().then(setStatus).catch(() => {})
-    return window.api.updates.onStatus(setStatus)
+    if (!platform.updates.supported) return
+    platform.updates.getStatus().then(setStatus).catch(() => {})
+    return platform.updates.onStatus(setStatus)
   }, [])
+
+  // No in-app updater on web/mobile (the app store handles it).
+  if (!platform.updates.supported) return null
 
   if (installing) return <UpdatingOverlay open />
 

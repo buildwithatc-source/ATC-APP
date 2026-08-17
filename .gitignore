@@ -9,3 +9,9 @@ out
 
 # electron-builder output
 release
+
+# Capacitor (web build + generated native projects)
+dist-web
+android
+ios
+.capacitor

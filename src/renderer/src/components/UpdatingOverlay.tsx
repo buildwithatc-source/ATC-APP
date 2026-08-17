@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react'
+import { platform } from '@renderer/lib/platform'
 import logo from '@renderer/assets/logo.png'
 
 /**
@@ -11,7 +12,7 @@ export function useInstallUpdate(): { installing: boolean; install: () => void }
   const install = useCallback(() => {
     setInstalling(true)
     setTimeout(() => {
-      void window.api.updates.install()
+      void platform.updates.install()
     }, 600)
   }, [])
   return { installing, install }

@@ -16,6 +16,7 @@ import { listClients } from '@renderer/lib/db/clients'
 import { getBusiness } from '@renderer/lib/db/business'
 import { listProjects } from '@renderer/lib/db/projects'
 import { setExpensesInvoiced } from '@renderer/lib/db/expenses'
+import { platform } from '@renderer/lib/platform'
 import { createInvoice, getInvoice, updateInvoice } from '@renderer/lib/db/invoices'
 import { toNumber } from '@renderer/lib/format'
 import { ClientPicker } from './ClientPicker'
@@ -214,7 +215,7 @@ export function InvoiceEditor(): JSX.Element {
     setSaveError(null)
     setExporting(true)
     try {
-      const res = await window.api.pdf.export(renderInvoiceHtml(sheet), invoicePdfName(invoiceNo))
+      const res = await platform.pdf.export(renderInvoiceHtml(sheet), invoicePdfName(invoiceNo))
       if (!res.ok && !res.canceled && res.error) setSaveError(res.error)
     } finally {
       setExporting(false)
@@ -225,7 +226,7 @@ export function InvoiceEditor(): JSX.Element {
     setSaveError(null)
     setPrinting(true)
     try {
-      const res = await window.api.pdf.print(renderInvoiceHtml(sheet))
+      const res = await platform.pdf.print(renderInvoiceHtml(sheet))
       if (!res.ok && res.error) setSaveError(res.error)
     } finally {
       setPrinting(false)

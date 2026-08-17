@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@renderer/components/ui'
 import { UpdatingOverlay, useInstallUpdate } from '@renderer/components/UpdatingOverlay'
+import { platform } from '@renderer/lib/platform'
 import type { UpdateStatus } from '@shared/update'
 
 function describe(status: UpdateStatus): string {
@@ -31,16 +32,16 @@ export function UpdatePanel(): JSX.Element {
   const { installing, install } = useInstallUpdate()
 
   useEffect(() => {
-    window.api.getAppVersion().then(setVersion).catch(() => setVersion('unknown'))
-    window.api.updates.getStatus().then(setStatus).catch(() => {})
-    const unsubscribe = window.api.updates.onStatus(setStatus)
+    platform.app.getVersion().then(setVersion).catch(() => setVersion('unknown'))
+    platform.updates.getStatus().then(setStatus).catch(() => {})
+    const unsubscribe = platform.updates.onStatus(setStatus)
     return unsubscribe
   }, [])
 
   async function check(): Promise<void> {
     setChecking(true)
     try {
-      setStatus(await window.api.updates.check())
+      setStatus(await platform.updates.check())
     } finally {
       setChecking(false)
     }

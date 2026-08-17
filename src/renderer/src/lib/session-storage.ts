@@ -1,21 +1,23 @@
 import type { SupportedStorage } from '@supabase/supabase-js'
+import { platform } from './platform'
 
 /**
- * A Supabase auth storage adapter that persists the session through the
- * main process, where it is encrypted with Electron `safeStorage` before
- * hitting disk. Nothing is written to localStorage, so tokens never sit in
- * plaintext in the renderer's storage.
+ * A Supabase auth storage adapter that persists the session through the active
+ * platform. On desktop this goes to the main process, where it is encrypted with
+ * Electron `safeStorage` before hitting disk (nothing in renderer localStorage).
+ * On web/mobile it uses the platform's storage (localStorage today; Capacitor
+ * Preferences/secure-storage later).
  *
- * All methods are async (backed by IPC), which supabase-js supports.
+ * All methods are async, which supabase-js supports.
  */
 export const encryptedSessionStorage: SupportedStorage = {
   getItem(key: string): Promise<string | null> {
-    return window.api.session.get(key)
+    return platform.session.get(key)
   },
   setItem(key: string, value: string): Promise<void> {
-    return window.api.session.set(key, value)
+    return platform.session.set(key, value)
   },
   removeItem(key: string): Promise<void> {
-    return window.api.session.remove(key)
+    return platform.session.remove(key)
   }
 }
