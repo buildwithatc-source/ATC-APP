@@ -79,11 +79,10 @@ jobs:
     # it as an artifact so the publish job attaches it to the same Release.
     # Debug build = no signing keystore needed; installable via "unknown apps".
     #
-    # continue-on-error: the APK is a bonus attached to the release — a failure
-    # here must NOT block the Windows/Mac installers. publish still runs; it just
-    # won't find an APK artifact to attach that run. (The job still shows its
-    # real status in the Actions UI so a failure is visible.)
-    continue-on-error: true
+    # If this job fails (e.g. a flaky action download), the run shows red but the
+    # `publish` job still ships the desktop installers — it uses `if: always()`
+    # and only requires `build` to have succeeded (see below). The APK is simply
+    # absent from that release; re-cut to try again.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -139,6 +138,11 @@ jobs:
 
   publish:
     needs: [build, android]
+    # Run once build+android have finished. `always()` means a failed/skipped
+    # android job (flaky APK build) does NOT block the desktop release; we only
+    # require the desktop installers (`build`) to have succeeded. download-artifact
+    # then attaches whatever artifacts exist — with the APK if it built.
+    if: ${{ always() && needs.build.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
