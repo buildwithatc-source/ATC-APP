@@ -21,7 +21,8 @@ function invoiceRow(input: InvoiceInput): Record<string, unknown> {
     adjustments: input.adjustments,
     subtotal: input.subtotal,
     total: input.total,
-    status: input.status
+    status: input.status,
+    itemized: input.itemized
   }
 }
 

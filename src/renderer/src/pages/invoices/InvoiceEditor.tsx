@@ -64,6 +64,7 @@ export function InvoiceEditor(): JSX.Element {
     reset,
     watch,
     setValue,
+    getValues,
     formState: { errors }
   } = useForm<InvoiceFormValues>({
     // zod's coerce makes input≠output types; the form values are the coerced
@@ -72,7 +73,7 @@ export function InvoiceEditor(): JSX.Element {
     defaultValues: newInvoiceDefaults('')
   })
 
-  const { fields, append, remove } = useFieldArray({ control, name: 'items' })
+  const { fields, append, remove, replace } = useFieldArray({ control, name: 'items' })
 
   // Initial load: clients + business, and the invoice itself when editing.
   useEffect(() => {
@@ -135,7 +136,8 @@ export function InvoiceEditor(): JSX.Element {
       unit_price: effectiveUnitPrice(it.unit_price, it.markup_percent, values.markup_percent)
     })),
     adjustments: toNumber(values.adjustments),
-    notes: values.notes ?? ''
+    notes: values.notes ?? '',
+    itemized: values.itemized ?? true
   }
 
   function buildInput(v: InvoiceFormValues, nextStatus: InvoiceStatus): InvoiceInput {
@@ -153,6 +155,7 @@ export function InvoiceEditor(): JSX.Element {
       subtotal,
       total,
       status: nextStatus,
+      itemized: v.itemized,
       items: v.items.map((it) => ({
         description: it.description,
         category: it.category,
@@ -174,16 +177,20 @@ export function InvoiceEditor(): JSX.Element {
    *  the billable (cost + markup) amount the client sees. Each line carries its
    *  budget category so the invoice groups them under a "Materials" header. */
   function addExpenses(picks: ExpensePick[]): void {
-    for (const { expense: e, categoryName } of picks) {
+    // Drop blank starter/leftover lines so pulled-in expenses don't sit next to
+    // an empty "Uncategorized" row.
+    const isBlank = (it: InvoiceFormValues['items'][number]): boolean =>
+      !(it.description ?? '').trim() && !(it.category ?? '').trim() && toNumber(it.unit_price) === 0
+    const kept = (getValues('items') ?? []).filter((it) => !isBlank(it))
+    const added = picks.map(({ expense: e, categoryName }) => ({
+      description: e.description ?? '',
+      category: categoryName ?? '',
+      qty: 1,
       // Base price = cost; markup is applied at the invoice level.
-      append({
-        description: e.description ?? '',
-        category: categoryName ?? '',
-        qty: 1,
-        unit_price: Number(e.amount),
-        markup_percent: 0
-      })
-    }
+      unit_price: Number(e.amount),
+      markup_percent: 0
+    }))
+    replace([...kept, ...added])
     setPendingExpenseIds((prev) => [...prev, ...picks.map((p) => p.expense.id)])
   }
 
@@ -330,7 +337,11 @@ export function InvoiceEditor(): JSX.Element {
       >
         {/* Form */}
         {(isDesktop || mobileView === 'form') && (
-        <div className={`w-full space-y-5 overflow-auto p-6 ${isDesktop ? 'border-r border-slate-200' : ''}`}>
+        <div
+          className={`w-full overflow-auto ${
+            isDesktop ? 'space-y-5 border-r border-slate-200 p-6' : 'space-y-3 p-4'
+          }`}
+        >
           <ClientPicker
             clients={clients}
             value={values.client_id || null}
@@ -381,6 +392,33 @@ export function InvoiceEditor(): JSX.Element {
               {...register('invoice_date')}
             />
             <TextField label="Due date" type="date" {...register('due_date')} />
+          </div>
+
+          <div>
+            <span className="mb-1 block text-sm font-medium text-slate-700">Client sees</span>
+            <div className="inline-flex rounded-lg bg-slate-100 p-0.5">
+              <button
+                type="button"
+                onClick={() => setValue('itemized', true)}
+                className={`rounded-md px-3 py-1.5 text-sm font-medium ${
+                  values.itemized ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
+                }`}
+              >
+                Itemized breakdown
+              </button>
+              <button
+                type="button"
+                onClick={() => setValue('itemized', false)}
+                className={`rounded-md px-3 py-1.5 text-sm font-medium ${
+                  !values.itemized ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
+                }`}
+              >
+                Category totals only
+              </button>
+            </div>
+            <p className="mt-1 text-xs text-slate-400">
+              “Category totals only” hides the individual items and shows one line per category.
+            </p>
           </div>
 
           <LineItemsEditor

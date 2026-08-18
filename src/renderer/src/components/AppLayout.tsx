@@ -16,40 +16,41 @@ const nav: NavItem[] = [
   { to: '/settings', label: 'Settings', end: false, icon: 'settings' }
 ]
 
-// Inline stroke icons (no icon dependency). Rendered inside <Icon>.
+// Monochrome SF-Symbols-style glyphs (24-grid, round caps/joins). No color.
 const ICONS = {
   invoices: (
     <>
-      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-      <path d="M14 2v6h6" />
-      <path d="M8 9h2M8 13h8M8 17h8" />
+      <path d="M7 3h7l4 4v12a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z" />
+      <path d="M14 3v4h4" />
+      <path d="M8.5 12.5h7M8.5 16h7" />
     </>
   ),
   quotations: (
     <>
-      <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
-      <path d="M9 5a2 2 0 002 2h2a2 2 0 002-2 2 2 0 00-2-2h-2a2 2 0 00-2 2z" />
-      <path d="M9 12h6M9 16h6" />
+      <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L3 13V4a1 1 0 011-1h9l7.59 7.59a2 2 0 010 2.82z" />
+      <circle cx="7.5" cy="7.5" r="1.4" />
     </>
   ),
-  projects: <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />,
+  projects: (
+    <path d="M3 7a2 2 0 012-2h3.9a2 2 0 011.6.8L12.5 8H19a2 2 0 012 2v7a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
+  ),
   contacts: (
     <>
-      <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
+      <circle cx="9" cy="8" r="3.6" />
+      <path d="M3.2 20a5.8 5.8 0 0111.6 0" />
+      <path d="M16 4.6a3.6 3.6 0 010 6.8M17.4 13.4A5.8 5.8 0 0121 18.5" />
     </>
   ),
   settings: (
     <>
-      <circle cx="12" cy="12" r="3" />
+      <circle cx="12" cy="12" r="3.2" />
       <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
     </>
   ),
   logout: (
     <>
-      <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
-      <path d="M16 17l5-5-5-5M21 12H9" />
+      <path d="M15 4h2a2 2 0 012 2v12a2 2 0 01-2 2h-2" />
+      <path d="M10 17l5-5-5-5M15 12H3" />
     </>
   )
 }
@@ -60,7 +61,7 @@ function Icon({ name }: { name: keyof typeof ICONS }): JSX.Element {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={1.8}
+      strokeWidth={1.7}
       strokeLinecap="round"
       strokeLinejoin="round"
       className="h-6 w-6"
@@ -144,10 +145,10 @@ export function AppLayout(): JSX.Element {
               title={item.label}
               aria-label={item.label}
               className={({ isActive }) =>
-                `flex h-11 w-11 items-center justify-center rounded-lg transition ${
+                `flex h-11 w-11 items-center justify-center rounded-xl transition ${
                   isActive
-                    ? 'bg-slate-100 text-slate-900'
-                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                    ? 'bg-slate-900 text-white'
+                    : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
                 }`
               }
             >

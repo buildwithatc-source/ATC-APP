@@ -20,6 +20,7 @@ export const invoiceSchema = z.object({
   notes: z.string(),
   markup_percent: z.coerce.number().min(0, 'Markup must be ≥ 0'),
   adjustments: z.coerce.number(),
+  itemized: z.boolean(),
   items: z.array(itemSchema).min(1, 'Add at least one line item')
 })
 
@@ -84,6 +85,7 @@ export function newInvoiceDefaults(payableToDefault: string): InvoiceFormValues 
     notes: '',
     markup_percent: 0,
     adjustments: 0,
+    itemized: true,
     items: [{ description: '', category: '', qty: 1, unit_price: 0, markup_percent: 0 }]
   }
 }
@@ -100,6 +102,7 @@ export function invoiceToFormValues(inv: InvoiceWithItems): InvoiceFormValues {
     notes: inv.notes ?? '',
     markup_percent: inv.markup_percent,
     adjustments: inv.adjustments,
+    itemized: inv.itemized ?? true,
     items:
       inv.items.length > 0
         ? inv.items.map((it) => ({

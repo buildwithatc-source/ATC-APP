@@ -22,6 +22,8 @@ export type SheetData = {
   items: SheetItem[]
   adjustments: number
   notes: string
+  /** false = show one summary line per category instead of the itemized rows. */
+  itemized: boolean
 }
 
 /**
@@ -41,7 +43,8 @@ export function InvoiceSheet({ data }: { data: SheetData }): JSX.Element {
     dueDate,
     items,
     adjustments,
-    notes
+    notes,
+    itemized
   } = data
 
   const rows = items.map((it) => ({ ...it, total: it.qty * it.unit_price }))
@@ -135,27 +138,42 @@ export function InvoiceSheet({ data }: { data: SheetData }): JSX.Element {
           </tr>
         </thead>
         <tbody>
-          {groupByCategory(rows).map((group) => (
-            <Fragment key={group.category || '__uncat__'}>
-              {group.category && (
-                <tr>
-                  <td colSpan={4} className="pt-4 pb-1 text-sm font-bold text-brand-accent">
-                    {group.category}
-                  </td>
+          {groupByCategory(rows).map((group) => {
+            // Summary mode: one line per named category (its total); uncategorized
+            // items still list individually since they have no category to fold into.
+            if (!itemized && group.category) {
+              const groupTotal = group.items.reduce((s, r) => s + r.total, 0)
+              return (
+                <tr key={group.category} className="border-b border-slate-100 align-top">
+                  <td className="py-2 pr-2 font-medium">{group.category}</td>
+                  <td className="py-2 px-2 text-right tabular-nums text-slate-400">—</td>
+                  <td className="py-2 px-2 text-right tabular-nums text-slate-400">—</td>
+                  <td className="py-2 pl-2 text-right tabular-nums">{formatPeso(groupTotal)}</td>
                 </tr>
-              )}
-              {group.items.map((r, j) => (
-                <tr key={`${group.category}-${j}`} className="border-b border-slate-100 align-top">
-                  <td className={`py-2 pr-2 ${group.category ? 'pl-5' : ''}`}>
-                    {r.description || ' '}
-                  </td>
-                  <td className="py-2 px-2 text-right tabular-nums">{r.qty || 0}</td>
-                  <td className="py-2 px-2 text-right tabular-nums">{formatPeso(r.unit_price)}</td>
-                  <td className="py-2 pl-2 text-right tabular-nums">{formatPeso(r.total)}</td>
-                </tr>
-              ))}
-            </Fragment>
-          ))}
+              )
+            }
+            return (
+              <Fragment key={group.category || '__uncat__'}>
+                {itemized && group.category && (
+                  <tr>
+                    <td colSpan={4} className="pt-4 pb-1 text-sm font-bold text-brand-accent">
+                      {group.category}
+                    </td>
+                  </tr>
+                )}
+                {group.items.map((r, j) => (
+                  <tr key={`${group.category}-${j}`} className="border-b border-slate-100 align-top">
+                    <td className={`py-2 pr-2 ${itemized && group.category ? 'pl-5' : ''}`}>
+                      {r.description || ' '}
+                    </td>
+                    <td className="py-2 px-2 text-right tabular-nums">{r.qty || 0}</td>
+                    <td className="py-2 px-2 text-right tabular-nums">{formatPeso(r.unit_price)}</td>
+                    <td className="py-2 pl-2 text-right tabular-nums">{formatPeso(r.total)}</td>
+                  </tr>
+                ))}
+              </Fragment>
+            )
+          })}
         </tbody>
       </table>
 

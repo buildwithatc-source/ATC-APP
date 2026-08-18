@@ -195,6 +195,9 @@ export type Invoice = {
   subtotal: number
   total: number
   status: InvoiceStatus
+  /** When false, the invoice shows one line per category (its total) instead of
+   *  the itemized breakdown. Display-only; totals are unchanged. */
+  itemized: boolean
   created_by: string | null
   created_at: string
   updated_at: string
@@ -237,6 +240,7 @@ export type InvoiceInput = {
   subtotal: number
   total: number
   status: InvoiceStatus
+  itemized: boolean
   items: InvoiceItemInput[]
 }
 

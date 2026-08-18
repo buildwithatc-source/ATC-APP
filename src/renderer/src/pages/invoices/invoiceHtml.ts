@@ -33,13 +33,25 @@ export function renderInvoiceHtml(data: SheetData): string {
     .map((l) => `<div>${esc(l)}</div>`)
     .join('')
 
-  // Every row of a category collapses under one bold header (see groupByCategory).
+  // Itemized: every row of a category collapses under one bold header. Summary
+  // (itemized === false): one line per named category showing its total.
   const itemRows = groupByCategory(rows)
     .map((group) => {
-      const header = group.category
-        ? `<tr><td class="cat" colspan="4">${esc(group.category)}</td></tr>`
-        : ''
-      const descClass = group.category ? 'desc indent' : 'desc'
+      if (!data.itemized && group.category) {
+        const groupTotal = group.items.reduce((s, r) => s + r.total, 0)
+        return `
+        <tr>
+          <td class="desc catsum">${esc(group.category)}</td>
+          <td class="num">&mdash;</td>
+          <td class="num">&mdash;</td>
+          <td class="num">${esc(formatPeso(groupTotal))}</td>
+        </tr>`
+      }
+      const header =
+        data.itemized && group.category
+          ? `<tr><td class="cat" colspan="4">${esc(group.category)}</td></tr>`
+          : ''
+      const descClass = data.itemized && group.category ? 'desc indent' : 'desc'
       const body = group.items
         .map(
           (r) => `
@@ -108,6 +120,7 @@ export function renderInvoiceHtml(data: SheetData): string {
     padding-top: 4mm; padding-bottom: 1mm;
   }
   table.items td.desc.indent { padding-left: 5mm; }
+  table.items td.catsum { font-weight: 600; }
   table.items th.num, table.items td.num { text-align: right; white-space: nowrap; }
   table.items th.qty { width: 14mm; }
   table.items th.price { width: 28mm; }
