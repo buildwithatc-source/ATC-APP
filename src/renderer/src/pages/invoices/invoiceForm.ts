@@ -25,6 +25,29 @@ export const invoiceSchema = z.object({
 
 export type InvoiceFormValues = z.infer<typeof invoiceSchema>
 
+/**
+ * Group items by category for display. Every row of the same category collapses
+ * into ONE group (not run-based), so an interleaved list like
+ * Materials → Misc → Materials still shows a single "Materials" group.
+ * Categorized groups keep first-appearance order; uncategorized ('') sinks last.
+ */
+export function groupByCategory<T extends { category?: string | null }>(
+  items: T[]
+): { category: string; items: T[] }[] {
+  const order: string[] = []
+  const map = new Map<string, T[]>()
+  for (const it of items) {
+    const cat = (it.category ?? '').trim()
+    if (!map.has(cat)) {
+      map.set(cat, [])
+      order.push(cat)
+    }
+    ;(map.get(cat) as T[]).push(it)
+  }
+  order.sort((a, b) => (a === '' ? 1 : b === '' ? -1 : 0))
+  return order.map((category) => ({ category, items: map.get(category) as T[] }))
+}
+
 /** Effective marked-up unit price. Global and per-line markups add together. */
 export function effectiveUnitPrice(
   unitPrice: unknown,

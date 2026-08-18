@@ -72,7 +72,7 @@ export function InvoiceEditor(): JSX.Element {
     defaultValues: newInvoiceDefaults('')
   })
 
-  const { fields, append, remove, move } = useFieldArray({ control, name: 'items' })
+  const { fields, append, remove } = useFieldArray({ control, name: 'items' })
 
   // Initial load: clients + business, and the invoice itself when editing.
   useEffect(() => {
@@ -386,13 +386,13 @@ export function InvoiceEditor(): JSX.Element {
           <LineItemsEditor
             control={control}
             register={register}
+            setValue={setValue}
             fields={fields}
             globalMarkup={toNumber(values.markup_percent)}
-            onAppend={() =>
-              append({ description: '', category: '', qty: 1, unit_price: 0, markup_percent: 0 })
+            onAppend={(category = '') =>
+              append({ description: '', category, qty: 1, unit_price: 0, markup_percent: 0 })
             }
             onRemove={remove}
-            onMove={(from, to) => move(from, to)}
           />
           {errors.items && (
             <p className="text-xs text-red-600">

@@ -1,5 +1,7 @@
+import { Fragment } from 'react'
 import type { Business } from '@renderer/lib/types'
 import { formatPeso, formatTemplateDate } from '@renderer/lib/format'
+import { groupByCategory } from './invoiceForm'
 
 export type SheetItem = {
   description: string
@@ -133,33 +135,27 @@ export function InvoiceSheet({ data }: { data: SheetData }): JSX.Element {
           </tr>
         </thead>
         <tbody>
-          {(() => {
-            const out: JSX.Element[] = []
-            let lastCat = ''
-            rows.forEach((r, i) => {
-              const cat = (r.category ?? '').trim()
-              // A bold category header opens each new group (e.g. "Materials").
-              if (cat && cat !== lastCat) {
-                out.push(
-                  <tr key={`cat-${i}`}>
-                    <td colSpan={4} className="pt-4 pb-1 text-sm font-bold text-brand-accent">
-                      {cat}
-                    </td>
-                  </tr>
-                )
-              }
-              lastCat = cat
-              out.push(
-                <tr key={i} className="border-b border-slate-100 align-top">
-                  <td className={`py-2 pr-2 ${cat ? 'pl-5' : ''}`}>{r.description || ' '}</td>
+          {groupByCategory(rows).map((group) => (
+            <Fragment key={group.category || '__uncat__'}>
+              {group.category && (
+                <tr>
+                  <td colSpan={4} className="pt-4 pb-1 text-sm font-bold text-brand-accent">
+                    {group.category}
+                  </td>
+                </tr>
+              )}
+              {group.items.map((r, j) => (
+                <tr key={`${group.category}-${j}`} className="border-b border-slate-100 align-top">
+                  <td className={`py-2 pr-2 ${group.category ? 'pl-5' : ''}`}>
+                    {r.description || ' '}
+                  </td>
                   <td className="py-2 px-2 text-right tabular-nums">{r.qty || 0}</td>
                   <td className="py-2 px-2 text-right tabular-nums">{formatPeso(r.unit_price)}</td>
                   <td className="py-2 pl-2 text-right tabular-nums">{formatPeso(r.total)}</td>
                 </tr>
-              )
-            })
-            return out
-          })()}
+              ))}
+            </Fragment>
+          ))}
         </tbody>
       </table>
 

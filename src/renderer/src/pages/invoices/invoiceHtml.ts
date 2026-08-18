@@ -1,5 +1,6 @@
 import { formatPeso, formatTemplateDate } from '@renderer/lib/format'
 import type { SheetData } from './InvoiceSheet'
+import { groupByCategory } from './invoiceForm'
 
 function esc(s: string | null | undefined): string {
   return String(s ?? '')
@@ -32,22 +33,25 @@ export function renderInvoiceHtml(data: SheetData): string {
     .map((l) => `<div>${esc(l)}</div>`)
     .join('')
 
-  let lastCat = ''
-  const itemRows = rows
-    .map((r) => {
-      const cat = (r.category ?? '').trim()
-      // A bold category header opens each new group (e.g. "Materials").
-      const header =
-        cat && cat !== lastCat ? `<tr><td class="cat" colspan="4">${esc(cat)}</td></tr>` : ''
-      lastCat = cat
-      const descClass = cat ? 'desc indent' : 'desc'
-      return `${header}
+  // Every row of a category collapses under one bold header (see groupByCategory).
+  const itemRows = groupByCategory(rows)
+    .map((group) => {
+      const header = group.category
+        ? `<tr><td class="cat" colspan="4">${esc(group.category)}</td></tr>`
+        : ''
+      const descClass = group.category ? 'desc indent' : 'desc'
+      const body = group.items
+        .map(
+          (r) => `
         <tr>
           <td class="${descClass}">${esc(r.description) || '&nbsp;'}</td>
           <td class="num">${r.qty || 0}</td>
           <td class="num">${esc(formatPeso(r.unit_price))}</td>
           <td class="num">${esc(formatPeso(r.total))}</td>
         </tr>`
+        )
+        .join('')
+      return header + body
     })
     .join('')
 
