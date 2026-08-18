@@ -22,8 +22,19 @@ export function LineItemsEditor({
   onRemove,
   onMove
 }: Props): JSX.Element {
+  // Categories already used on this invoice, offered as autocomplete suggestions.
+  const watchedItems = useWatch({ control, name: 'items' }) as { category?: string }[] | undefined
+  const knownCategories = Array.from(
+    new Set((watchedItems ?? []).map((i) => (i?.category ?? '').trim()).filter(Boolean))
+  )
+
   return (
     <div>
+      <datalist id="invoice-line-categories">
+        {knownCategories.map((c) => (
+          <option key={c} value={c} />
+        ))}
+      </datalist>
       <div className="mb-2 flex items-center justify-between">
         <span className="text-sm font-medium text-slate-700">Line items</span>
         <button
@@ -39,6 +50,7 @@ export function LineItemsEditor({
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
             <tr>
+              <th className="w-32 px-2 py-2 text-left font-medium">Category</th>
               <th className="px-2 py-2 text-left font-medium">Description</th>
               <th className="w-14 px-2 py-2 text-right font-medium">Qty</th>
               <th className="w-24 px-2 py-2 text-right font-medium">Unit price</th>
@@ -110,6 +122,14 @@ function Row({
 
   return (
     <tr className="align-top">
+      <td className="px-2 py-1.5">
+        <input
+          className={cell}
+          placeholder="e.g. Materials"
+          list="invoice-line-categories"
+          {...register(`items.${index}.category`)}
+        />
+      </td>
       <td className="px-2 py-1.5">
         <input className={cell} placeholder="Item description" {...register(`items.${index}.description`)} />
       </td>

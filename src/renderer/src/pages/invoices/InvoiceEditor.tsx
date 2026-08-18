@@ -125,6 +125,7 @@ export function InvoiceEditor(): JSX.Element {
     dueDate: values.due_date ?? '',
     items: (values.items ?? []).map((it) => ({
       description: it.description ?? '',
+      category: it.category ?? '',
       qty: toNumber(it.qty),
       // Show the marked-up unit price so qty × unit = total stays consistent.
       unit_price: effectiveUnitPrice(it.unit_price, it.markup_percent, values.markup_percent)
@@ -150,6 +151,7 @@ export function InvoiceEditor(): JSX.Element {
       status: nextStatus,
       items: v.items.map((it) => ({
         description: it.description,
+        category: it.category,
         qty: toNumber(it.qty),
         unit_price: toNumber(it.unit_price),
         markup_percent: toNumber(it.markup_percent)
@@ -165,14 +167,18 @@ export function InvoiceEditor(): JSX.Element {
   }
 
   /** Pull selected project expenses onto the invoice as line items, priced at
-   *  the billable (cost + markup) amount the client sees. Each description is
-   *  prefixed with its budget category, e.g. "Material Purchase — Paint". */
+   *  the billable (cost + markup) amount the client sees. Each line carries its
+   *  budget category so the invoice groups them under a "Materials" header. */
   function addExpenses(picks: ExpensePick[]): void {
     for (const { expense: e, categoryName } of picks) {
-      const base = e.description ?? ''
-      const description = categoryName ? `${categoryName} — ${base}` : base
       // Base price = cost; markup is applied at the invoice level.
-      append({ description, qty: 1, unit_price: Number(e.amount), markup_percent: 0 })
+      append({
+        description: e.description ?? '',
+        category: categoryName ?? '',
+        qty: 1,
+        unit_price: Number(e.amount),
+        markup_percent: 0
+      })
     }
     setPendingExpenseIds((prev) => [...prev, ...picks.map((p) => p.expense.id)])
   }
@@ -346,7 +352,9 @@ export function InvoiceEditor(): JSX.Element {
             register={register}
             fields={fields}
             globalMarkup={toNumber(values.markup_percent)}
-            onAppend={() => append({ description: '', qty: 1, unit_price: 0, markup_percent: 0 })}
+            onAppend={() =>
+              append({ description: '', category: '', qty: 1, unit_price: 0, markup_percent: 0 })
+            }
             onRemove={remove}
             onMove={(from, to) => move(from, to)}
           />

@@ -205,6 +205,8 @@ export type InvoiceItem = {
   invoice_id: string
   position: number
   description: string | null
+  /** Optional grouping header, e.g. "Materials". Display-only. */
+  category: string | null
   qty: number
   unit_price: number
   markup_percent: number
@@ -215,6 +217,7 @@ export type InvoiceItem = {
  *  unit_price is the base price; markup is applied at invoice level. */
 export type InvoiceItemInput = {
   description: string
+  category: string
   qty: number
   unit_price: number
   markup_percent: number

@@ -30,6 +30,7 @@ function itemRows(invoiceId: string, items: InvoiceItemInput[]): Record<string, 
     invoice_id: invoiceId,
     position: i,
     description: emptyToNull(it.description),
+    category: emptyToNull(it.category),
     qty: it.qty,
     unit_price: it.unit_price,
     markup_percent: it.markup_percent

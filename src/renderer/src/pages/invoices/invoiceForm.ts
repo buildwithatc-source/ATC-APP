@@ -4,6 +4,7 @@ import type { InvoiceWithItems } from '@renderer/lib/types'
 
 export const itemSchema = z.object({
   description: z.string(),
+  category: z.string(),
   qty: z.coerce.number().min(0, 'Qty must be ≥ 0'),
   unit_price: z.coerce.number().min(0, 'Price must be ≥ 0'),
   markup_percent: z.coerce.number().min(0, 'Markup must be ≥ 0')
@@ -60,7 +61,7 @@ export function newInvoiceDefaults(payableToDefault: string): InvoiceFormValues 
     notes: '',
     markup_percent: 0,
     adjustments: 0,
-    items: [{ description: '', qty: 1, unit_price: 0, markup_percent: 0 }]
+    items: [{ description: '', category: '', qty: 1, unit_price: 0, markup_percent: 0 }]
   }
 }
 
@@ -80,10 +81,11 @@ export function invoiceToFormValues(inv: InvoiceWithItems): InvoiceFormValues {
       inv.items.length > 0
         ? inv.items.map((it) => ({
             description: it.description ?? '',
+            category: it.category ?? '',
             qty: it.qty,
             unit_price: it.unit_price,
             markup_percent: it.markup_percent
           }))
-        : [{ description: '', qty: 1, unit_price: 0, markup_percent: 0 }]
+        : [{ description: '', category: '', qty: 1, unit_price: 0, markup_percent: 0 }]
   }
 }

@@ -32,16 +32,23 @@ export function renderInvoiceHtml(data: SheetData): string {
     .map((l) => `<div>${esc(l)}</div>`)
     .join('')
 
+  let lastCat = ''
   const itemRows = rows
-    .map(
-      (r) => `
+    .map((r) => {
+      const cat = (r.category ?? '').trim()
+      // A bold category header opens each new group (e.g. "Materials").
+      const header =
+        cat && cat !== lastCat ? `<tr><td class="cat" colspan="4">${esc(cat)}</td></tr>` : ''
+      lastCat = cat
+      const descClass = cat ? 'desc indent' : 'desc'
+      return `${header}
         <tr>
-          <td class="desc">${esc(r.description) || '&nbsp;'}</td>
+          <td class="${descClass}">${esc(r.description) || '&nbsp;'}</td>
           <td class="num">${r.qty || 0}</td>
           <td class="num">${esc(formatPeso(r.unit_price))}</td>
           <td class="num">${esc(formatPeso(r.total))}</td>
         </tr>`
-    )
+    })
     .join('')
 
   const logoHtml = biz?.logo_url
@@ -92,6 +99,11 @@ export function renderInvoiceHtml(data: SheetData): string {
     color: #64748b; border-bottom: 2px solid #1e293b; padding: 2mm 1mm;
   }
   table.items td { padding: 2mm 1mm; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+  table.items td.cat {
+    font-weight: 700; color: #0ea5e9; border-bottom: none;
+    padding-top: 4mm; padding-bottom: 1mm;
+  }
+  table.items td.desc.indent { padding-left: 5mm; }
   table.items th.num, table.items td.num { text-align: right; white-space: nowrap; }
   table.items th.qty { width: 14mm; }
   table.items th.price { width: 28mm; }
