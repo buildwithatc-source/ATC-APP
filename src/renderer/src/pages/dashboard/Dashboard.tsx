@@ -10,6 +10,7 @@ import { listClients } from '@renderer/lib/db/clients'
 import { deleteInvoice, listInvoices, setInvoiceStatus } from '@renderer/lib/db/invoices'
 import { formatPeso, formatTemplateDate, todayManila } from '@renderer/lib/format'
 import { isOverdue } from '@renderer/lib/invoiceStatus'
+import { platform } from '@renderer/lib/platform'
 import type { InvoiceListRow, InvoiceStatus } from '@renderer/lib/types'
 import { StatTiles } from './StatTiles'
 import { InvoiceFilters, emptyFilters, type Filters } from './InvoiceFilters'
@@ -28,6 +29,7 @@ const STATUS_TABS: { value: StatusTab; label: string }[] = [
 export function Dashboard(): JSX.Element {
   const navigate = useNavigate()
   const { toast } = useToast()
+  const isDesktop = platform.isDesktop
   const invoicesQ = useCachedQuery('invoices', listInvoices, [])
   const clientsQ = useCachedQuery('clients', listClients, [])
   const rows = invoicesQ.data
@@ -184,15 +186,37 @@ export function Dashboard(): JSX.Element {
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums">{formatPeso(Number(r.total))}</td>
                     <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setDeleting(r)
-                        }}
-                        className="text-red-600 hover:underline"
-                      >
-                        Delete
-                      </button>
+                      {isDesktop ? (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setDeleting(r)
+                          }}
+                          className="text-red-600 hover:underline"
+                        >
+                          Delete
+                        </button>
+                      ) : (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setDeleting(r)
+                          }}
+                          aria-label={`Delete invoice ${r.invoice_no}`}
+                          title="Delete"
+                          className="inline-flex items-center justify-center rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                        >
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path
+                              d="M4 7h16M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m1 0v12a1 1 0 01-1 1H8a1 1 0 01-1-1V7"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

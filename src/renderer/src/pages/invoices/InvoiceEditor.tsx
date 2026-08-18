@@ -52,6 +52,10 @@ export function InvoiceEditor(): JSX.Element {
   const [savedAt, setSavedAt] = useState<number | null>(null)
   const [exporting, setExporting] = useState(false)
   const [printing, setPrinting] = useState(false)
+  // Desktop shows form + live preview side by side. The tablet is too narrow
+  // for both, so it shows one at a time via a Form/Preview toggle.
+  const isDesktop = platform.isDesktop
+  const [mobileView, setMobileView] = useState<'form' | 'preview'>('form')
 
   const {
     register,
@@ -291,10 +295,42 @@ export function InvoiceEditor(): JSX.Element {
         </div>
       )}
 
-      {/* Two panes: form (left) + live preview (right) */}
-      <div className="grid flex-1 grid-cols-1 gap-0 overflow-hidden lg:grid-cols-2">
+      {/* Desktop shows form + preview side by side; tablet toggles between them. */}
+      {!isDesktop && (
+        <div className="border-b border-slate-200 bg-white px-4 py-2">
+          <div className="inline-flex rounded-lg bg-slate-100 p-0.5">
+            <button
+              type="button"
+              onClick={() => setMobileView('form')}
+              className={`rounded-md px-4 py-1.5 text-sm font-medium ${
+                mobileView === 'form' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
+              }`}
+            >
+              Form
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileView('preview')}
+              className={`rounded-md px-4 py-1.5 text-sm font-medium ${
+                mobileView === 'preview' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
+              }`}
+            >
+              Preview
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div
+        className={
+          isDesktop
+            ? 'grid flex-1 grid-cols-1 gap-0 overflow-hidden lg:grid-cols-2'
+            : 'flex flex-1 overflow-hidden'
+        }
+      >
         {/* Form */}
-        <div className="space-y-5 overflow-auto border-r border-slate-200 p-6">
+        {(isDesktop || mobileView === 'form') && (
+        <div className={`w-full space-y-5 overflow-auto p-6 ${isDesktop ? 'border-r border-slate-200' : ''}`}>
           <ClientPicker
             clients={clients}
             value={values.client_id || null}
@@ -382,15 +418,18 @@ export function InvoiceEditor(): JSX.Element {
 
           <TextArea label="Notes" rows={3} {...register('notes')} />
         </div>
+        )}
 
         {/* Live preview */}
-        <div className="overflow-auto bg-slate-200/60 p-6">
+        {(isDesktop || mobileView === 'preview') && (
+        <div className="w-full overflow-auto bg-slate-200/60 p-6">
           <div className="origin-top" style={{ transform: 'scale(0.78)', transformOrigin: 'top center' }}>
             <div className="shadow-xl">
               <InvoiceSheet data={sheet} />
             </div>
           </div>
         </div>
+        )}
       </div>
     </div>
   )

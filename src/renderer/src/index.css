@@ -31,6 +31,12 @@ body {
    interactive controls. Gated on `pointer: coarse` so the desktop (mouse)
    build stays pixel-identical to Electron. */
 @media (pointer: coarse) {
+  html {
+    /* Readability floor for arm's-length tablet use: bump the root size so all
+       rem-based type and spacing scale up ~12%. The invoice sheet and PDF use
+       fixed px/mm, so the printed output is unaffected. */
+    font-size: 18px;
+  }
   button,
   [role='button'],
   select,
