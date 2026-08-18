@@ -7,7 +7,6 @@ import { FullscreenSpinner } from '@renderer/components/FullscreenSpinner'
 import type {
   Business,
   Client,
-  Expense,
   InvoiceInput,
   InvoiceStatus,
   ProjectWithClient
@@ -20,7 +19,7 @@ import { platform } from '@renderer/lib/platform'
 import { createInvoice, getInvoice, updateInvoice } from '@renderer/lib/db/invoices'
 import { toNumber } from '@renderer/lib/format'
 import { ClientPicker } from './ClientPicker'
-import { ExpensePicker } from './ExpensePicker'
+import { ExpensePicker, type ExpensePick } from './ExpensePicker'
 import { LineItemsEditor } from './LineItemsEditor'
 import { InvoiceSheet, type SheetData } from './InvoiceSheet'
 import { invoicePdfName, renderInvoiceHtml } from './invoiceHtml'
@@ -166,13 +165,16 @@ export function InvoiceEditor(): JSX.Element {
   }
 
   /** Pull selected project expenses onto the invoice as line items, priced at
-   *  the billable (cost + markup) amount the client sees. */
-  function addExpenses(expenses: Expense[]): void {
-    for (const e of expenses) {
+   *  the billable (cost + markup) amount the client sees. Each description is
+   *  prefixed with its budget category, e.g. "Material Purchase — Paint". */
+  function addExpenses(picks: ExpensePick[]): void {
+    for (const { expense: e, categoryName } of picks) {
+      const base = e.description ?? ''
+      const description = categoryName ? `${categoryName} — ${base}` : base
       // Base price = cost; markup is applied at the invoice level.
-      append({ description: e.description ?? '', qty: 1, unit_price: Number(e.amount), markup_percent: 0 })
+      append({ description, qty: 1, unit_price: Number(e.amount), markup_percent: 0 })
     }
-    setPendingExpenseIds((prev) => [...prev, ...expenses.map((e) => e.id)])
+    setPendingExpenseIds((prev) => [...prev, ...picks.map((p) => p.expense.id)])
   }
 
   /** Selecting a project links it, fills the project label (description, not the

@@ -42,9 +42,15 @@ export function SelectOrAdd({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirmId, setConfirmId] = useState<string | null>(null)
+  const [query, setQuery] = useState('')
   const rootRef = useRef<HTMLDivElement>(null)
 
   const selectedName = options.find((o) => o.id === value)?.name ?? ''
+
+  // Only bother with a search box once the list is long enough to be a chore.
+  const showSearch = options.length > 6
+  const q = query.trim().toLowerCase()
+  const filtered = q ? options.filter((o) => o.name.toLowerCase().includes(q)) : options
 
   useEffect(() => {
     if (!open) return
@@ -61,6 +67,7 @@ export function SelectOrAdd({
     setDraft('')
     setError(null)
     setConfirmId(null)
+    setQuery('')
   }
 
   function pick(id: string): void {
@@ -118,18 +125,35 @@ export function SelectOrAdd({
 
       {open && (
         <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg">
+          {showSearch && (
+            <div className="border-b border-slate-100 p-2">
+              <input
+                autoFocus
+                value={query}
+                placeholder="Search…"
+                onChange={(e) => setQuery(e.target.value)}
+                className="w-full rounded-md border border-slate-200 px-2 py-1.5 text-sm outline-none focus:border-brand-accent focus:ring-2 focus:ring-brand-accent/30"
+              />
+            </div>
+          )}
           <ul className="max-h-60 overflow-auto py-1 text-sm">
-            <li>
-              <button
-                type="button"
-                onClick={() => pick('')}
-                className="block w-full px-3 py-1.5 text-left text-slate-500 hover:bg-slate-50"
-              >
-                {noneLabel}
-              </button>
-            </li>
+            {!q && (
+              <li>
+                <button
+                  type="button"
+                  onClick={() => pick('')}
+                  className="block w-full px-3 py-1.5 text-left text-slate-500 hover:bg-slate-50"
+                >
+                  {noneLabel}
+                </button>
+              </li>
+            )}
 
-            {options.map((o) => (
+            {q && filtered.length === 0 && (
+              <li className="px-3 py-1.5 text-slate-400">No matches for “{query.trim()}”</li>
+            )}
+
+            {filtered.map((o) => (
               <li key={o.id} className="flex items-center justify-between hover:bg-slate-50">
                 <button
                   type="button"
@@ -205,7 +229,11 @@ export function SelectOrAdd({
               ) : (
                 <button
                   type="button"
-                  onClick={() => setAdding(true)}
+                  onClick={() => {
+                    // Carry the search text into the new-name field as a head start.
+                    setDraft(query.trim())
+                    setAdding(true)
+                  }}
                   className="block w-full px-3 py-1.5 text-left font-medium text-brand-accent hover:bg-slate-50"
                 >
                   {addLabel}
