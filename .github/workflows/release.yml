@@ -96,7 +96,8 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          # Capacitor 8's Android libraries compile with source level 21.
+          java-version: 21
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
