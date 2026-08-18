@@ -294,19 +294,53 @@ export function ProjectDetail(): JSX.Element {
                         {e.invoiced ? 'Billed' : 'Unbilled'}
                       </button>
                     </td>
-                    <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => {
-                          setEditing(e)
-                          setFormOpen(true)
-                        }}
-                        className="mr-3 text-brand-accent hover:underline"
-                      >
-                        Edit
-                      </button>
-                      <button onClick={() => setDeleting(e)} className="text-red-600 hover:underline">
-                        Del
-                      </button>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => {
+                            setEditing(e)
+                            setFormOpen(true)
+                          }}
+                          aria-label="Edit expense"
+                          title="Edit"
+                          className="inline-flex items-center justify-center rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-brand-accent"
+                        >
+                          <svg
+                            width="18"
+                            height="18"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            aria-hidden="true"
+                          >
+                            <path d="M12 20h9" />
+                            <path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => setDeleting(e)}
+                          aria-label="Delete expense"
+                          title="Delete"
+                          className="inline-flex items-center justify-center rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                        >
+                          <svg
+                            width="18"
+                            height="18"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            aria-hidden="true"
+                          >
+                            <path d="M4 7h16M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m1 0v12a1 1 0 01-1 1H8a1 1 0 01-1-1V7" />
+                          </svg>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
