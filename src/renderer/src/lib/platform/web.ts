@@ -110,6 +110,12 @@ function printViaIframe(html: string): void {
   const iframe = document.createElement('iframe')
   iframe.id = 'atc-print-frame'
   iframe.setAttribute('aria-hidden', 'true')
+  // Defense in depth for the one place we inject built HTML: sandbox the frame so
+  // any stray <script> in the document can't run. `allow-same-origin` keeps it
+  // same-origin so the parent can still call contentWindow.print(); `allow-modals`
+  // permits the print dialog. Crucially, `allow-scripts` is omitted, so scripts
+  // in the HTML are inert even if a value ever slipped past escaping.
+  iframe.setAttribute('sandbox', 'allow-same-origin allow-modals')
   Object.assign(iframe.style, {
     position: 'fixed',
     right: '0',
