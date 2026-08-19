@@ -376,7 +376,11 @@ export function InvoiceEditor(): JSX.Element {
           </div>
 
           {values.project_id && (
-            <ExpensePicker projectId={values.project_id} onAdd={addExpenses} />
+            <ExpensePicker
+              projectId={values.project_id}
+              addedIds={pendingExpenseIds}
+              onAdd={addExpenses}
+            />
           )}
 
           <div className="grid grid-cols-2 gap-4">

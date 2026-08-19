@@ -17,9 +17,7 @@ const NO_UPDATES: UpdateStatus = { state: 'dev' }
  *   - session -> @capacitor/preferences (native pref store; localStorage on web)
  *   - app     -> @capacitor/app + Capacitor.getPlatform()
  *   - links   -> @capacitor/browser (in-app browser on native; new tab on web)
- *
- * PDF still uses the browser print dialog ("Save as PDF"); a real native export
- * (jsPDF + @capacitor/share/filesystem) is the remaining follow-up, marked below.
+ *   - pdf     -> hidden-iframe print (OS dialog handles print + Save-as-PDF)
  */
 export const webPlatform: Platform = {
   isDesktop: false,
@@ -48,15 +46,14 @@ export const webPlatform: Platform = {
   },
   pdf: {
     supported: false,
-    // Fallback: open the self-contained HTML and invoke the browser print
-    // dialog, which offers "Save as PDF". TODO(capacitor): render to a real PDF
-    // with jsPDF/html2pdf and share via @capacitor/share on native.
+    // Both routes open the OS print dialog; on Android/Chrome that dialog offers
+    // real printers AND "Save as PDF", so it serves Export and Print alike.
     async export(html) {
-      openPrintable(html)
+      printViaIframe(html)
       return { ok: true }
     },
     async print(html) {
-      openPrintable(html)
+      printViaIframe(html)
       return { ok: true }
     }
   },
@@ -100,12 +97,43 @@ export const webPlatform: Platform = {
   }
 }
 
-function openPrintable(html: string): void {
-  const w = window.open('', '_blank')
-  if (!w) return
-  w.document.write(html)
-  w.document.close()
-  w.focus()
-  // Let the document lay out before printing.
-  setTimeout(() => w.print(), 300)
+/**
+ * Print (or Save-as-PDF) a self-contained HTML document via a hidden iframe.
+ * The old approach used window.open, which the Android WebView blocks (returns
+ * null) — so nothing happened. A same-document iframe needs no new window and
+ * lets `contentWindow.print()` invoke the OS print dialog on both the WebView
+ * and desktop/mobile browsers.
+ */
+function printViaIframe(html: string): void {
+  document.getElementById('atc-print-frame')?.remove()
+
+  const iframe = document.createElement('iframe')
+  iframe.id = 'atc-print-frame'
+  iframe.setAttribute('aria-hidden', 'true')
+  Object.assign(iframe.style, {
+    position: 'fixed',
+    right: '0',
+    bottom: '0',
+    width: '1px',
+    height: '1px',
+    opacity: '0',
+    border: '0'
+  })
+
+  iframe.onload = () => {
+    // Let layout/images settle, then print from the iframe's own window.
+    setTimeout(() => {
+      try {
+        iframe.contentWindow?.focus()
+        iframe.contentWindow?.print()
+      } catch {
+        // Ignore — some engines throw if the dialog is dismissed immediately.
+      }
+      setTimeout(() => iframe.remove(), 1500)
+    }, 300)
+  }
+
+  // srcdoc fires `load` once with the real content (no about:blank race).
+  iframe.srcdoc = html
+  document.body.appendChild(iframe)
 }

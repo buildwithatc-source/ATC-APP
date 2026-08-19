@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { listUnbilledExpenses } from '@renderer/lib/db/expenses'
 import { listBudgetCategories } from '@renderer/lib/db/budget'
 import { formatPeso, formatTemplateDate } from '@renderer/lib/format'
@@ -9,14 +9,20 @@ export type ExpensePick = { expense: Expense; categoryName: string | null }
 
 type Props = {
   projectId: string
+  /**
+   * Expense ids already pulled onto this invoice this session. They're only
+   * marked billed in the DB on save, so we hide them here to avoid re-adding —
+   * important because the picker reloads from the DB whenever it remounts (e.g.
+   * flipping Form/Preview on the tablet).
+   */
+  addedIds: string[]
   /** Called with the chosen expenses (+ category name); parent appends them. */
   onAdd: (picks: ExpensePick[]) => void
 }
 
 /** Lists a project's UNBILLED expenses, grouped by budget category, with
- *  checkboxes so they can be pulled onto the invoice as line items. Added rows
- *  disappear from the list. */
-export function ExpensePicker({ projectId, onAdd }: Props): JSX.Element {
+ *  checkboxes so they can be pulled onto the invoice as line items. */
+export function ExpensePicker({ projectId, addedIds, onAdd }: Props): JSX.Element {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [categoryName, setCategoryName] = useState<Map<string, string>>(new Map())
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -43,26 +49,26 @@ export function ExpensePicker({ projectId, onAdd }: Props): JSX.Element {
   const nameFor = (e: Expense): string | null =>
     e.category_id ? (categoryName.get(e.category_id) ?? null) : null
 
-  // Ordered groups: each category that has unbilled expenses, then uncategorized.
-  const groups = useMemo(() => {
-    const byCat = new Map<string, Expense[]>()
-    const uncategorized: Expense[] = []
-    for (const e of expenses) {
-      const name = nameFor(e)
-      if (name === null) uncategorized.push(e)
-      else {
-        const arr = byCat.get(name) ?? []
-        arr.push(e)
-        byCat.set(name, arr)
-      }
+  // Hide anything already pulled onto the invoice (parent tracks the ids).
+  const addedSet = new Set(addedIds)
+  const available = expenses.filter((e) => !addedSet.has(e.id))
+
+  // Ordered groups: each category that has available expenses, then uncategorized.
+  const byCat = new Map<string, Expense[]>()
+  const uncategorized: Expense[] = []
+  for (const e of available) {
+    const name = nameFor(e)
+    if (name === null) uncategorized.push(e)
+    else {
+      const arr = byCat.get(name) ?? []
+      arr.push(e)
+      byCat.set(name, arr)
     }
-    const out: { name: string | null; items: Expense[] }[] = []
-    for (const [name, items] of byCat) out.push({ name, items })
-    out.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''))
-    if (uncategorized.length) out.push({ name: null, items: uncategorized })
-    return out
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expenses, categoryName])
+  }
+  const groups: { name: string | null; items: Expense[] }[] = [...byCat.entries()]
+    .map(([name, items]) => ({ name, items }))
+    .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''))
+  if (uncategorized.length) groups.push({ name: null, items: uncategorized })
 
   function toggle(id: string): void {
     setSelected((prev) => {
@@ -75,22 +81,20 @@ export function ExpensePicker({ projectId, onAdd }: Props): JSX.Element {
 
   function toggleAll(): void {
     setSelected((prev) =>
-      prev.size === expenses.length ? new Set() : new Set(expenses.map((e) => e.id))
+      prev.size === available.length ? new Set() : new Set(available.map((e) => e.id))
     )
   }
 
   function addSelected(): void {
-    const picks: ExpensePick[] = expenses
+    const picks: ExpensePick[] = available
       .filter((e) => selected.has(e.id))
       .map((e) => ({ expense: e, categoryName: nameFor(e) }))
     if (picks.length === 0) return
     onAdd(picks)
-    // Remove added rows locally so they can't be added twice.
-    setExpenses((prev) => prev.filter((e) => !selected.has(e.id)))
     setSelected(new Set())
   }
 
-  const selectedTotal = expenses
+  const selectedTotal = available
     .filter((e) => selected.has(e.id))
     .reduce((s, e) => s + Number(e.amount), 0)
 
@@ -98,13 +102,13 @@ export function ExpensePicker({ projectId, onAdd }: Props): JSX.Element {
     <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-3">
       <div className="mb-2 flex items-center justify-between">
         <span className="text-sm font-medium text-slate-700">Unbilled expenses</span>
-        {expenses.length > 0 && (
+        {available.length > 0 && (
           <button
             type="button"
             onClick={toggleAll}
             className="text-xs text-brand-accent hover:underline"
           >
-            {selected.size === expenses.length ? 'Clear all' : 'Select all'}
+            {selected.size === available.length ? 'Clear all' : 'Select all'}
           </button>
         )}
       </div>
@@ -113,7 +117,7 @@ export function ExpensePicker({ projectId, onAdd }: Props): JSX.Element {
         <p className="py-3 text-sm text-slate-400">Loading expenses…</p>
       ) : error ? (
         <p className="py-3 text-sm text-red-600">{error}</p>
-      ) : expenses.length === 0 ? (
+      ) : available.length === 0 ? (
         <p className="py-3 text-sm text-slate-400">No unbilled expenses for this project.</p>
       ) : (
         <>
